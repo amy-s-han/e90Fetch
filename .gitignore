@@ -1,0 +1,7 @@
+testElevator
+elevatorCV
+elevator/
+
+*.o
+
+*.exe
