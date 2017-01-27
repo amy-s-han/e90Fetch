@@ -34,6 +34,10 @@ for i in circles[0,:]:
     # draw the center of the circle
     cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
 
+# debug
+# cv2.imshow('detected circles',cimg)
+# cv2.waitKey(0)
+
 # want to sort by y so that we can figure out the layers
 sortedCircle = toSortCircles[0]
 # print "before sorting", sortedCircle
@@ -43,6 +47,7 @@ sortedCircle = sortedCircle[sortedCircle[:,1].argsort()]
 
 candidates = []
 numCircles = sortedCircle.shape[0]
+
 
 for i in range(1, numCircles):
 
@@ -54,9 +59,10 @@ for i in range(1, numCircles):
 		# if no neighbour on the same row, then add to candidates
 		
 		# print "\n large delta y, checking neighbours: \n"
+		if i != numCircles - 1: # this is not the last circle:
 
-		if abs(sortedCircle[i][1] - sortedCircle[i+1][1]) > 0.1 * sortedCircle[i-1][1]:
-			candidates.append(sortedCircle[i])
+			if abs(sortedCircle[i][1] - sortedCircle[i+1][1]) > 0.1 * sortedCircle[i-1][1]:
+				candidates.append(sortedCircle[i])
 
 	# if this is the last circle: 
 	if i == numCircles - 1:
@@ -84,10 +90,21 @@ if badIndices != []:
 	for bad in badIndices:
 		candidates.remove(bad)
 
-# print candidates
+print "printing candidates"
+print candidates
+
+i = 3
 
 for circ in candidates:
 	cv2.circle(cimg, (circ[0], circ[1]), circ[2], (255, 0, 0), 3)
+	print (circ[0] - 0.25*circ[2], circ[1] - 0.25*circ[2])
+	font = cv2.FONT_HERSHEY_SIMPLEX
+	# cv2.putText(cimg, "lala", (2.0, 2.0), font, 3, (255, 0, 0))
+
+
+	cv2.putText(cimg, str(i), (int(circ[0] - 0.25*circ[2]), int(circ[1] + 0.25*circ[2])), font, 1, (255, 0, 0), thickness = 2)
+	i -= 1
+
 
 cv2.imshow('detected circles',cimg)
 cv2.waitKey(0)
