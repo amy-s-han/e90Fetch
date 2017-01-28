@@ -38,6 +38,10 @@ for i in circles[0,:]:
 # cv2.imshow('detected circles',cimg)
 # cv2.waitKey(0)
 
+# start timer
+
+
+
 # want to sort by y so that we can figure out the layers
 sortedCircle = toSortCircles[0]
 # print "before sorting", sortedCircle
@@ -89,6 +93,11 @@ for i in range(1, len(candidates)):
 if badIndices != []:
 	for bad in badIndices:
 		candidates.remove(bad)
+
+
+# stop timer
+
+
 
 print "printing candidates"
 print candidates

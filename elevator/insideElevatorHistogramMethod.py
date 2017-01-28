@@ -1,14 +1,10 @@
-#!/usr/bin/env python
 import cv2
 import cv2.cv as cv
 import numpy as np
 from matplotlib import pyplot as plt
 import string
-import sys
 
-# I guess I'm prototyping here and if it works, I'll translate it into c++???
 
-getNewHists = False
 
 # loads stringified numpy array histogram from file 
 def loadHistFromFile(filename):
@@ -50,20 +46,19 @@ def chi2_distance(histA, histB, eps = 1e-10):
 	return d
 
 
+
+
 def main():
-
-	if len(sys.argv[1:]) == 0:
-		getNewHists = False
-	else:
-		getNewHists = True
-
-	img = cv2.imread('pics/outside2.jpg',0)
+	img = cv2.imread('pics/inside1.jpg',0)
 
 	# For static image
 	rows,cols = img.shape
 	M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
 	img = cv2.warpAffine(img,M,(cols,rows))
 
+	# print img.shape[:2]
+
+	# img = cv2.resize(img, (0, 0), fx=0.35, fy=0.35)
 	img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
 	img = cv2.medianBlur(img,5)
 	cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
@@ -71,17 +66,31 @@ def main():
 	height = img.shape[0]
 	width = img.shape[1]
 
-	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=70, param2=60) 
-	print circles
+	#good for 0.35 resize of phone camera picture
+	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=110, param2=95)
+
+	# good for 0.3 resize of phone camera picture
+	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=85) 
+
+	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=75, param2=71) 
+
+	circles = np.uint16(np.around(circles))
+	
+
+	# debug
+	# cv2.imshow('detected circles',cimg)
+	# cv2.waitKey(0)
+
+	# start timer
 
 	filename = 'modelButtonHistogram.txt'
 	modelButtonHist = loadHistFromFile(filename)
 
 
-	if getNewHists:
-		f = open("sampleHistograms.txt", "w")
+	candidates = []
 
-	
+
+		
 	circles = np.uint16(np.around(circles))
 
 	totalRadius = 1.0 * np.sum(circles[0], axis=0)
@@ -93,20 +102,29 @@ def main():
 
 	# draw all circles
 	for i in circles[0,:]:
+			    # draw the outer circle
 
 		circRadius = i[2]
 		cx = i[0]
 		cy = i[1]
 		
+		cv2.circle(cimg,(cx,cy),circRadius,(0,255,0),2)
+		# draw the center of the circle
+		cv2.circle(cimg,(cx,cy),2,(0,0,255),3)
+
+		cv2.imshow('detected circles',cimg)
+		cv2.waitKey(0)
+
 		pt1 = (cx - meanRadius, cy - 10)
 		pt2 = (cx + meanRadius, cy + 10)
 		mask = np.zeros((height, width), np.uint8)
 		cv2.rectangle(mask, pt1, pt2, (255, 255, 255), thickness=cv.CV_FILLED)
 
 		hist1 = cv2.calcHist([cimg], [0], mask, [256], [0,256])
-		# plt.plot(hist1)
-		# plt.xlim([0,256])
-		# plt.show()	
+		plt.plot(hist1)
+		plt.xlim([0,256])
+
+		plt.show()	
 
 		print type(hist1[0][0])
 
@@ -118,12 +136,6 @@ def main():
 
 		print "result: ", ret
 
-		if getNewHists:
-			hist1 = hist1.astype(int)
-			hist1 = hist1.flatten()
-			f.write(str(hist1) + "\n\n")
-		
-
 		# draw the outer circle
 		cv2.circle(cimg,(cx, cy),circRadius,(0,255,0),2)
 		# draw the center of the circle
@@ -131,22 +143,33 @@ def main():
 		print i
 
 
-	if getNewHists:
-		f.close()
+	print compHistResults
+	
+
+	asdfasdf
+	# not finished yet because histogram method doesn't work very well with
+	# buttons inside elevator. 
+
+	# stop timer
 
 
-	# TODO: Add logic here to find the correct button!
+
+	print "printing candidates"
+	print candidates
+
+	i = 3
+
+	for circ in candidates:
+		cv2.circle(cimg, (circ[0], circ[1]), circ[2], (255, 0, 0), 3)
+		print (circ[0] - 0.25*circ[2], circ[1] - 0.25*circ[2])
+		font = cv2.FONT_HERSHEY_SIMPLEX
+		# cv2.putText(cimg, "lala", (2.0, 2.0), font, 3, (255, 0, 0))
 
 
+		cv2.putText(cimg, str(i), (int(circ[0] - 0.25*circ[2]), int(circ[1] + 0.25*circ[2])), font, 1, (255, 0, 0), thickness = 2)
+		i -= 1
 
 
-	# # print candidates
-
-	# # draw out the elevator floor buttons
-	# for circ in candidates:
-	# 	cv2.circle(cimg, (circ[0], circ[1]), circ[2], (255, 0, 0), 3)
-
-	# cv2.imshow('detected circles',cimg)
 	cv2.imshow('detected circles',cimg)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
