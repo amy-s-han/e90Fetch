@@ -16,12 +16,14 @@ from argparse import ArgumentParser
 def detectButton(img):
 	try:
 
-		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3) #not sure if needed
+		#img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3) #not sure if needed
 
 		img = cv2.medianBlur(img,5)
+                print "here"
 		cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
-
+                print "but not here"
 		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=75, param2=71) 
+                print "got here"
 
 		circles = np.uint16(np.around(circles))
 		toSortCircles = np.int16(np.around(circles))
@@ -99,10 +101,10 @@ class elevatorButtonDetector:
 		self.button_exist_pub = rospy.Publisher("button_pub", String, queue_size=10)
 
 		self.bridge = CvBridge()
-		self.image_sub = rospy.Subscriber("head_camera/rgb/image_raw",Image,self.callback)
+		self.image_sub = rospy.Subscriber("/head_camera/rgb/image_raw",Image,self.callback)
 
 		self.window = 'Camera'
-		cv2.namedWindow(self.window)
+	
 
 	def callback(self,data): 
 		try:
@@ -111,7 +113,7 @@ class elevatorButtonDetector:
 			print(e)
 
 		cv2.imshow(self.window, img)
-		# cv2.waitKey(3)
+		cv2.waitKey(3)
 
 		floorButtons = detectButton(img)
 		if floorButtons: 
