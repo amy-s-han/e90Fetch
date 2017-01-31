@@ -4,3 +4,15 @@ mapping
 
 
 January 27th, 2017 Meeting Notes
+navigation -> do on simulation, then robot
+
+homographies, looking at gretchen camera
+up/down elevator -> histogram, k-nearest neighbours
+
+23406
+
+
+sudo service robot stop
+sudo service robot start
+
+rostopic echo /head_camera/rgb/image_raw 

@@ -28,11 +28,11 @@ def detectButton(img):
 
 		# draw all circles
 		for i in circles[0,:]:
-		    # draw the outer circle
-		    cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
-		    # draw the center of the circle
-		    cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-		    print i
+			# draw the outer circle
+			cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+			# draw the center of the circle
+			cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+			print i
 
 		sortedCircle = toSortCircles[0]
 		# print "before sorting", sortedCircle
@@ -89,11 +89,14 @@ def detectButton(img):
 		cv2.imshow('detected circles',cimg)
 		return candidates
 
+	except:
+		pass
 
 class elevatorButtonDetector:
+
 	def __init__(self):
 		print "HERE I AMMMMM"
-		self.tag_exist_pub = rospy.Publisher("button_pub", String, queue_size=10)
+		self.button_exist_pub = rospy.Publisher("button_pub", String, queue_size=10)
 
 		self.bridge = CvBridge()
 		self.image_sub = rospy.Subscriber("head_camera/rgb/image_raw",Image,self.callback)
@@ -110,10 +113,10 @@ class elevatorButtonDetector:
 		cv2.imshow(self.window, img)
 		# cv2.waitKey(3)
 
-		circles = detectButton(img)
-		if circles: 
-			self.tag_exist_pub.publish(tagDetected)
-			print "Published. ", circles.len, " elevator buttons detected."
+		floorButtons = detectButton(img)
+		if floorButtons: 
+			self.button_exist_pub.publish(floorButtons)
+			print "Published. ", floorButtons.len, " elevator buttons detected."
 		else:
 			print "no elevator buttons detected"
 			
