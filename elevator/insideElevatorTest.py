@@ -1,15 +1,21 @@
+from collections import Counter
 import cv2
 import cv2.cv as cv
+import math
+from matplotlib import pyplot as plt
 import numpy as np
 import sys
-from matplotlib import pyplot as plt
 import string
+import time
 
 def positionBasedLogic():
 
-	# img = cv2.imread('pics/gretchenTest.jpg',0)
-	img = cv2.imread('pics/inside1.jpg',0)
+	# img = cv2.imread('pics/gretchenTest.jpg')
+	img = cv2.imread('pics/inside1.jpg')
 
+
+	img = cv2.medianBlur(img,5)
+	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
 	# For static image
 	rows,cols = img.shape
@@ -37,10 +43,7 @@ def positionBasedLogic():
 	print "after adjustment shape: ", img.shape[:2]
 
 
-	img = cv2.medianBlur(img,5)
-	cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
-
-	# cv2.imshow('img',cimg)
+	# cv2.imshow('img',img)
 	# cv2.waitKey(0)
 
 
@@ -201,7 +204,10 @@ def chi2_distance(histA, histB, eps = 1e-10):
 
 
 def histogramMethod():
-	img = cv2.imread('pics/inside1.jpg',0)
+	img = cv2.imread('pics/inside1.jpg')
+
+	img = cv2.medianBlur(img,5)
+	img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
 	# For static image
 	rows,cols = img.shape
@@ -212,8 +218,7 @@ def histogramMethod():
 
 	# img = cv2.resize(img, (0, 0), fx=0.35, fy=0.35)
 	img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
-	img = cv2.medianBlur(img,5)
-	cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+
 
 	height = img.shape[0]
 	width = img.shape[1]
@@ -327,17 +332,506 @@ def histogramMethod():
 	cv2.destroyAllWindows()
 
 
+class buttonTemplateMatching:
+
+	def __init__(self):
+		# load templates of elevator buttons
+		self.origButtonTemplates = {}
+		self.buttonTemplates = {}
+		button1 = []
+		button2 = []
+		button3 = []
+
+		templateFile = open('templatePics/testButtonTemplates.txt', 'r')
+		pathPrefix = 'templatePics/'
+		
+		radiusTotal = 0
+		numRadius = 0
+
+		for picname in templateFile:
+			picPath = (pathPrefix + picname).strip()
+			if picPath == pathPrefix:
+				continue
+			pic = cv2.imread(picPath)
+			
+			if pic is None:
+				print picname, "did not load properly"
+				continue
+
+			pic = cv2.cvtColor(pic, cv2.COLOR_BGR2GRAY)
+
+			tempx, tempy = pic.shape[:2]
+			print tempx, tempy
+			maxdim = max(tempx, tempy)
+
+			
+			if "1" in picname:
+				button1.append(pic)
+			elif "2" in picname:
+				button2.append(pic)
+			elif "3" in picname:
+				button3.append(pic)
+
+			print "Loaded: ", picname
+
+			circles = cv2.HoughCircles(pic, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=135, param2=130, maxRadius=maxdim/2) 
+			print circles
+
+			if circles is not None:
+				circles = np.uint16(np.around(circles))
+				toSortCircles = np.int16(np.around(circles))
+
+				if len(circles[0]) == 1:
+					radiusTotal += circles[0][0][2]
+					numRadius += 1
+				else:
+					sumRad = 0
+					for i in circles[0,:]:
+						sumRad += i[2]
+					avg = sumRad / len(circles[0,:])
+					radiusTotal += avg
+					numRadius += 1
+
+				#debug
+				# for i in circles[0,:]:
+				# 	# draw the outer circle
+				# 	cv2.circle(pic,(i[0],i[1]),i[2],(0,255,0),2)
+				# 	# draw the center of the circle
+				# 	cv2.circle(pic,(i[0],i[1]),2,(0,0,255),3)
+
+				# debug
+				# cv2.imshow('detected circles',pic)
+				# cv2.waitKey(0)
+		
+		self.avgTemplateRadius = radiusTotal / numRadius
+		self.currAvgTemplateRadius = radiusTotal / numRadius
+		print "avgTemplateRadius", self.avgTemplateRadius
+
+		self.origButtonTemplates[1] = button1
+		self.origButtonTemplates[2] = button2
+		self.origButtonTemplates[3] = button3
+		self.buttonTemplates[1] = button1
+		self.buttonTemplates[2] = button2
+		self.buttonTemplates[3] = button3
+
+
+
+	def resizeTemplatePics(self, avgDetectedRadius):
+		print "currAvgTemplateRadius", self.currAvgTemplateRadius
+
+		ratio = float(avgDetectedRadius)/self.avgTemplateRadius
+
+		for i in range(1, 4):
+			button = self.origButtonTemplates[i]
+			resizedButton = []
+			for templatePic in button:
+				# debug
+				# cv2.imshow('templatePic',templatePic)
+				# cv2.waitKey(0)
+				# print "before size: ", templatePic.shape[:2]
+
+				templatePic = cv2.resize(templatePic, (0, 0), fx=ratio, fy=ratio)
+
+				# debug
+				# cv2.imshow('templatePic',templatePic)
+				# cv2.waitKey(0)
+				# print "after size: ", templatePic.shape[:2]
+
+				resizedButton.append(templatePic)
+
+			self.buttonTemplates[i] = resizedButton
+
+		self.currAvgTemplateRadius = avgDetectedRadius
+
+
+	def matchButtonImage(self):
+		# first id circles
+
+		# For static image
+		img = cv2.imread('pics/inside1.jpg')
+
+		img = cv2.medianBlur(img,5)
+		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+		rows,cols = img.shape
+		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+		img = cv2.warpAffine(img,M,(cols,rows))
+
+		print "original shape: ", img.shape[:2]
+
+		idealx = 888
+		idealy = 888
+
+		width = img.shape[0]
+		height = img.shape[1]
+
+		print "w, h: ", width, height
+
+		xratio = (1.0 * idealx)/width
+		yratio = (1.0 * idealy)/height
+
+		print "ratios: ", xratio, yratio
+
+		# img = cv2.resize(img, (0, 0), fx=0.35, fy=0.35)
+		img = cv2.resize(img, (0, 0), fx=xratio, fy=yratio)
+
+		print "after adjustment shape: ", img.shape[:2]
+
+		#good for 0.35 resize of phone camera picture
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=110, param2=95)
+
+		# good for 0.3 resize of phone camera picture
+		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=180) 
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=80, param2=75) 
+		print "number of circles is: ", circles.shape[1]
+
+		print "circles is: ", circles, "shape: ", circles.shape[:2], "shape: ", circles.shape
+
+		colorimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+
+		radiusList = []
+		newMeanCircleRadius = 0
+
+		if circles is not None:
+			circles = np.uint16(np.around(circles))
+			toSortCircles = np.int16(np.around(circles))
+
+			for i in circles[0,:]:
+				# draw the outer circle
+				cv2.circle(colorimg,(i[0],i[1]),i[2],(0,255,0),2)
+				# draw the center of the circle
+				cv2.circle(colorimg,(i[0],i[1]),2,(0,0,255),3)
+
+				print "circle radius: ", i[2]
+				radiusList.append(i[2])
+
+			# debug
+			# cv2.imshow('detected circlesla',colorimg)
+			# cv2.waitKey(0)
+
+
+			meanCircleRadius = np.mean(radiusList)
+			stdCircleRadius = np.std(radiusList)
+			print meanCircleRadius
+			print stdCircleRadius
+			
+			radiusListOutliersRemoved = []
+			for rad in radiusList:
+				if rad < meanCircleRadius + stdCircleRadius and \
+					rad > meanCircleRadius - stdCircleRadius:
+
+					radiusListOutliersRemoved.append(rad)
+
+			print radiusListOutliersRemoved
+			newMeanCircleRadius = np.mean(radiusListOutliersRemoved)
+			print "new mean:", newMeanCircleRadius
+
+
+		#resize template pic so that button is similar size
+		if 0.8*newMeanCircleRadius > self.currAvgTemplateRadius or \
+			0.8*self.currAvgTemplateRadius > newMeanCircleRadius:
+			self.resizeTemplatePics(newMeanCircleRadius)
+
+		# now implement feature detection
+
+		thresh = 0.92
+		r = int(newMeanCircleRadius)
+		
+		buttonNumber = 0
+
+		# self.buttonTemplates = [button1[], button2[], button3[]]
+		#testing button1
+
+		for i in range(1, 4):
+			button = self.buttonTemplates[i]
+			buttonNumber += 1
+			for templatePic in button:
+
+				tempx, tempy = templatePic.shape[:2]
+				sz = max(tempx, tempy)
+				res = cv2.matchTemplate(img, templatePic, cv2.TM_CCORR_NORMED)
+
+				resdisplay = (res-res.min())/(res.max()-res.min())
+				
+
+				while 1:
+					minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res)
+					print "stats:", minVal, maxVal, minLoc, maxLoc
+
+					resdisplay1 = (res-res.min())/(res.max()-res.min())
+					cv2.imshow("resdisplay1", resdisplay1)
+					cv2.waitKey()
+
+					if maxVal < thresh:
+
+						break
+
+					else:
+
+						x,y = maxLoc
+
+						p0 = (x-r, y-r)
+						p1 = (x+r, y+r)
+						cv2.rectangle(res, p0, p1, (0,0,0), -1) # zero out on res
+
+						pa = (x,y)
+						pb = (x+sz, y+sz)
+						cv2.rectangle(colorimg, pa, pb, (0,0,255), 1)
+
+				cv2.imshow("resdisplay", resdisplay)
+				cv2.waitKey()
+
+				cv2.imshow("colorimg", colorimg)
+				cv2.waitKey()
+
+
+class numberTemplateMatching:
+
+	def __init__(self):
+		# load templates of elevator buttons
+		self.origButtonTemplates = {}
+		self.buttonTemplates = {}
+		button1 = []
+		button2 = []
+		button3 = []
+
+		templateFile = open('templatePics/testNumberTemplates.txt', 'r')
+		pathPrefix = 'templatePics/'
+		
+		heightTotal = 0
+		numHeights = 0
+
+		for picname in templateFile:
+			picPath = (pathPrefix + picname).strip()
+			if picPath == pathPrefix:
+				continue
+			pic = cv2.imread(picPath)
+
+			if pic is None:
+				print picname, "did not load properly"
+				continue
+
+			pic = cv2.cvtColor(pic, cv2.COLOR_BGR2GRAY)
+
+			tempx, tempy = pic.shape[:2]
+			print tempy
+			heightTotal += tempy
+			numHeights += 1
+
+			
+			if "1" in picname:
+				button1.append(pic)
+			elif "2" in picname:
+				button2.append(pic)
+			elif "3" in picname:
+				button3.append(pic)
+
+			print "Loaded: ", picname
+		
+		self.avgTemplateRadius = heightTotal / numHeights
+		self.currAvgTemplateRadius = self.avgTemplateRadius
+		print "avgTemplateRadius", self.avgTemplateRadius
+
+		self.origButtonTemplates[1] = button1
+		self.origButtonTemplates[2] = button2
+		self.origButtonTemplates[3] = button3
+		self.buttonTemplates[1] = button1
+		self.buttonTemplates[2] = button2
+		self.buttonTemplates[3] = button3
+
+
+
+	def resizeTemplatePics(self, avgDetectedRadius):
+		print "currAvgTemplateRadius", self.currAvgTemplateRadius
+
+		ratio = float(avgDetectedRadius)/self.avgTemplateRadius
+
+		for i in range(1, 4):
+			button = self.origButtonTemplates[i]
+			resizedButton = []
+			for templatePic in button:
+				# debug
+				# cv2.imshow('templatePic',templatePic)
+				# cv2.waitKey(0)
+				# print "before size: ", templatePic.shape[:2]
+
+				templatePic = cv2.resize(templatePic, (0, 0), fx=ratio, fy=ratio)
+
+				# debug
+				# cv2.imshow('templatePic',templatePic)
+				# cv2.waitKey(0)
+				# print "after size: ", templatePic.shape[:2]
+
+				resizedButton.append(templatePic)
+
+			self.buttonTemplates[i] = resizedButton
+
+		self.currAvgTemplateRadius = avgDetectedRadius
+
+
+	def matchNumberImage(self):
+		# first id circles
+
+		# For static image
+		img = cv2.imread('pics/inside1.jpg')
+
+		img = cv2.medianBlur(img,5)
+		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+		rows,cols = img.shape
+		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+		img = cv2.warpAffine(img,M,(cols,rows))
+
+		print "original shape: ", img.shape[:2]
+
+		idealx = 888
+		idealy = 888
+
+		width = img.shape[0]
+		height = img.shape[1]
+
+		print "w, h: ", width, height
+
+		xratio = (1.0 * idealx)/width
+		yratio = (1.0 * idealy)/height
+
+		print "ratios: ", xratio, yratio
+
+		# img = cv2.resize(img, (0, 0), fx=0.35, fy=0.35)
+		img = cv2.resize(img, (0, 0), fx=xratio, fy=yratio)
+
+		print "after adjustment shape: ", img.shape[:2]
+
+		#good for 0.35 resize of phone camera picture
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=110, param2=95)
+
+		# good for 0.3 resize of phone camera picture
+		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=180) 
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=80, param2=75) 
+		print "number of circles is: ", circles.shape[1]
+
+		print "circles is: ", circles, "shape: ", circles.shape[:2], "shape: ", circles.shape
+
+		colorimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+
+		radiusList = []
+		newMeanCircleRadius = 0
+
+		if circles is not None:
+			circles = np.uint16(np.around(circles))
+			toSortCircles = np.int16(np.around(circles))
+
+			for i in circles[0,:]:
+				# draw the outer circle
+				cv2.circle(colorimg,(i[0],i[1]),i[2],(0,255,0),2)
+				# draw the center of the circle
+				cv2.circle(colorimg,(i[0],i[1]),2,(0,0,255),3)
+
+				print "circle radius: ", i[2]
+				radiusList.append(i[2])
+
+			# debug
+			# cv2.imshow('detected circlesla',colorimg)
+			# cv2.waitKey(0)
+
+
+			meanCircleRadius = np.mean(radiusList)
+			stdCircleRadius = np.std(radiusList)
+			print meanCircleRadius
+			print stdCircleRadius
+			
+			radiusListOutliersRemoved = []
+			for rad in radiusList:
+				if rad < meanCircleRadius + stdCircleRadius and \
+					rad > meanCircleRadius - stdCircleRadius:
+
+					radiusListOutliersRemoved.append(rad)
+
+			print radiusListOutliersRemoved
+			newMeanCircleRadius = np.mean(radiusListOutliersRemoved)
+			print "new mean:", newMeanCircleRadius
+
+
+		#resize template pic so that button is similar size
+		if 0.8*newMeanCircleRadius > self.currAvgTemplateRadius or \
+			0.8*self.currAvgTemplateRadius > newMeanCircleRadius:
+			self.resizeTemplatePics(newMeanCircleRadius)
+
+		# now implement feature detection
+
+		thresh = 0.9
+		r = 5000
+		# r = int(newMeanCircleRadius) * 10
+
+		buttonNumber = 0
+
+		# self.buttonTemplates = [button1[], button2[], button3[]]
+		#testing button1
+
+		for i in range(1, 4):
+			button = self.buttonTemplates[i]
+			buttonNumber += 1
+			for templatePic in button:
+
+				tempx, tempy = templatePic.shape[:2]
+
+				res = cv2.matchTemplate(img, templatePic, cv2.TM_CCORR_NORMED)
+
+				resdisplay = (res-res.min())/(res.max()-res.min())
+				
+
+				while 1:
+					minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(res)
+					print "stats:", minVal, maxVal, minLoc, maxLoc
+
+					resdisplay1 = (res-res.min())/(res.max()-res.min())
+					cv2.imshow("resdisplay1", resdisplay1)
+					cv2.waitKey()
+
+					if maxVal < thresh:
+
+						break
+
+					else:
+
+						x,y = maxLoc
+
+						p0 = (x-r, y-r)
+						p1 = (x+r, y+r)
+						cv2.rectangle(res, p0, p1, (0,0,0), -1) # zero out on res
+
+						pa = (x,y)
+						pb = (x+tempx, y+tempy)
+						cv2.rectangle(colorimg, pa, pb, (0,0,255), 1)
+
+				cv2.imshow('template', templatePic)
+				cv2.waitKey(0)
+
+				cv2.imshow("resdisplay", resdisplay)
+				cv2.waitKey(0)
+
+				cv2.imshow("colorimg", colorimg)
+				cv2.waitKey(0)
 
 
 def templateMatchingMethod():
-	pass
 
+	# btm = buttonTemplateMatching()
+	# btm.matchButtonImage()
 
+	ntm = numberTemplateMatching()
+	ntm.matchNumberImage()
 
 def main(args):
-	positionBasedLogic()
+	# positionBasedLogic()
 	# histogramMethod()
-	# templateMatchingMethod()
+	templateMatchingMethod()
+
+
 
 if __name__ == '__main__':
 	main(sys.argv) 
