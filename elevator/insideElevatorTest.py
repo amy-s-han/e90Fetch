@@ -541,9 +541,6 @@ class buttonTemplateMatching:
 		
 		buttonNumber = 0
 
-		# self.buttonTemplates = [button1[], button2[], button3[]]
-		#testing button1
-
 		for i in range(1, 4):
 			button = self.buttonTemplates[i]
 			buttonNumber += 1
@@ -769,12 +766,12 @@ class numberTemplateMatching:
 
 		buttonNumber = 0
 
-		# self.buttonTemplates = [button1[], button2[], button3[]]
-		#testing button1
+		matchedButtonCentersAndBoxes = []
 
 		for i in range(1, 4):
 			button = self.buttonTemplates[i]
 			buttonNumber += 1
+			buttonCentersAndBoxes = []
 			for templatePic in button:
 
 				tempx, tempy = templatePic.shape[:2]
@@ -808,6 +805,12 @@ class numberTemplateMatching:
 						pb = (x+tempx, y+tempy)
 						cv2.rectangle(colorimg, pa, pb, (0,0,255), 1)
 
+						#TODO: Might have to do some cleaning here once there is noisy data
+						buttonCentersAndBoxes.append(((x, y), pa, pb))
+
+						font = cv2.FONT_HERSHEY_SIMPLEX
+						cv2.putText(colorimg, str(buttonNumber), pa, font, 1, (255, 0, 0), thickness = 2)
+
 				cv2.imshow('template', templatePic)
 				cv2.waitKey(0)
 
@@ -817,6 +820,7 @@ class numberTemplateMatching:
 				cv2.imshow("colorimg", colorimg)
 				cv2.waitKey(0)
 
+			matchedButtonCentersAndBoxes.append(buttonCentersAndBoxes)
 
 def templateMatchingMethod():
 
