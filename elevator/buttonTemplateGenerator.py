@@ -30,8 +30,31 @@ def findCircles(img):
 
 	return img, circles
 
+def checkCirclesDetected(grayImg, circles):
+	colorImg = cv2.cvtColor(grayImg,cv2.COLOR_GRAY2BGR)
+
+	if circles is not None:
+		circles = np.uint16(np.around(circles))
+
+		for i in circles[0,:]:
+			# draw the outer circle
+			cv2.circle(colorImg,(i[0],i[1]),i[2],(0,255,0),2)
+			# draw the center of the circle
+			cv2.circle(colorImg,(i[0],i[1]),2,(0,0,255),3)
+
+	cv2.imshow('Detected Circles, press q to quit',colorImg)
+	decision = cv2.waitKey(0)
+	cv2.destroyAllWindows()
+
+	print "waitkey: ", decision
+
+	return decision
 
 def genButtonPics(grayImg, circles):
+
+	global button1Count
+	global button2Count
+	global button3Count
 
 	colorImg = cv2.cvtColor(grayImg,cv2.COLOR_GRAY2BGR)
 
@@ -61,16 +84,16 @@ def genButtonPics(grayImg, circles):
 
 		buttonName = ""
 		count = 0
-		if decision == 1048625:
+		if decision == 1048625: # if the key '1' is pressed
 			buttonName = "1button"
 			count = button1Count
-		elif decision == 1048626:
+		elif decision == 1048626: # if the key '2' is pressed
 			buttonName = "2button"
 			count = button2Count
-		elif decision == 1048627:
+		elif decision == 1048627: # if the key '3' is pressed
 			buttonName = "3button"
 			count = button3Count
-		else:
+		else: # if any other key is pressed, continue
 			continue
 
 		print "button name: ", buttonName
@@ -86,7 +109,8 @@ def genButtonPics(grayImg, circles):
 			temp = pathPrefix + buttonName + str(count) + ".jpg"
 			print temp
 
-			if os.path.isfile(temp):
+			if os.path.isfile(temp): 
+			# keep incrementing count until the file name doesn't exist
 				print "file exists"
 				count += 1
 			else:
@@ -113,6 +137,17 @@ def genButtonPics(grayImg, circles):
 
 def main(args):
 
+	os.system('clear')
+	print "If no picture is provided on command line, read in pics/inside1.jpg."
+	print "For each circle detected, program will show a resized circle image."
+	print "If the image should be saved, enter a number {1, 2, or 3} that corresponds"
+	print "to the button number. The image will be saved in the format button+number+count.jpg"
+	print "Otherwise, press any other key to continue."
+
+	global button1Count
+	global button2Count
+	global button3Count
+
 	img = None
 
 	if len(args) == 1:
@@ -130,7 +165,6 @@ def main(args):
 	countFile = None
 	if os.path.isfile("templatePics/buttonCount.txt"):
 		countFile = open("templatePics/buttonCount.txt", 'rw')
-		print "hereeeeee"
 		i = 0
 
 		for line in countFile:
@@ -150,15 +184,28 @@ def main(args):
 
 			i += 1
 
+		countFile.close()
 
-	print button1Count, button2Count, button3Count
+
+	print "loaded button counts: ", button1Count, button2Count, button3Count
+	
 	grayImg, circles = findCircles(img)
+
+	if checkCirclesDetected(grayImg, circles) == 1048689: # q was pressed, exit
+		print "\nExiting.\n"
+		return
 
 	if circles is not None:
 		genButtonPics(grayImg, circles)
 
 
-	#write to counts to file
+	#write updated counts to file
+	countFile = open("templatePics/buttonCount.txt", 'w')
+
+	if countFile is None:
+		print "ACKKKKKKK"
+		asdf
+
 	countFile.write(str(button1Count) + "\n")					
 	countFile.write(str(button2Count) + "\n")					
 	countFile.write(str(button3Count) + "\n")	
