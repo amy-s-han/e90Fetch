@@ -24,8 +24,8 @@ def findCircles(img):
 	print "after adjustment shape: ", img.shape[:2]
 
 	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=50, maxRadius=120) 
-	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=150, param2=45, maxRadius=120) 
-	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=130, param2=35, maxRadius=90) 
+	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
 
 	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=80, param2=75) 
 
@@ -47,8 +47,6 @@ def checkCirclesDetected(grayImg, circles):
 	decision = cv2.waitKey(0)
 	cv2.destroyAllWindows()
 
-	print "waitkey: ", decision
-
 	return decision
 
 def genButtonPics(grayImg, circles):
@@ -58,6 +56,7 @@ def genButtonPics(grayImg, circles):
 	global button3Count
 
 	colorImg = cv2.cvtColor(grayImg,cv2.COLOR_GRAY2BGR)
+	w,h = colorImg.shape[:2]
 
 	circles = np.uint16(np.around(circles))
 
@@ -72,16 +71,19 @@ def genButtonPics(grayImg, circles):
 		p0 = (center[0] - fudgedRadius, center[1] + fudgedRadius)
 		p1 = (center[0] + fudgedRadius, center[1] - fudgedRadius)
 
-		print p0, p1
-
 		buttonImg = colorImg[p1[1]:p0[1], p0[0]:p1[0]]
+		
+		bImgHeight, bImgWidth = buttonImg.shape[:2]
+
+		if bImgHeight <= 0 or bImgWidth <= 0 or bImgHeight > h or bImgWidth > w:
+			print "buttonImg is not valid with w,h = ", (bImgHeight, bImgWidth), ". Skipping."
+			continue
 
 		#resize picture to 64x64
 		buttonImg = cv2.resize(buttonImg, dsize=(64, 64))
 
 		cv2.imshow('buttonImg',buttonImg)
 		decision = cv2.waitKey(0)
-		print "waitkey: ", decision
 
 		buttonName = ""
 		count = 0
@@ -94,6 +96,8 @@ def genButtonPics(grayImg, circles):
 		elif decision == 1048627: # if the key '3' is pressed
 			buttonName = "3button"
 			count = button3Count
+		elif decision == 1048689: # user wants to quit
+			return
 		else: # if any other key is pressed, continue
 			continue
 
@@ -127,12 +131,6 @@ def genButtonPics(grayImg, circles):
 					button3Count = count
 
 				break
-
-		
-		# draw the outer circle
-		cv2.circle(colorImg,center,radius,(0,255,0),2)
-		# draw the center of the circle
-		cv2.circle(colorImg,center,2,(0,0,255),3)
 
 
 

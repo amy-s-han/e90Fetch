@@ -1,6 +1,9 @@
 testElevator
 elevatorCV
 
+elevator/templatePics
+elevator/pics
+
 *.o
 
 *.exe

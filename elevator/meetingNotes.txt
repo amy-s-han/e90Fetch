@@ -16,3 +16,8 @@ sudo service robot stop
 sudo service robot start
 
 rostopic echo /head_camera/rgb/image_raw 
+
+
+
+Haven't finished:
+inside8
