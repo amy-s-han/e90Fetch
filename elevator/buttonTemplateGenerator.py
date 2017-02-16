@@ -23,7 +23,8 @@ def findCircles(img):
 
 	print "after adjustment shape: ", img.shape[:2]
 
-	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=180) 
+	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=50, maxRadius=120) 
+	circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=150, param2=45, maxRadius=120) 
 	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
 
 	# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=80, param2=75) 
@@ -148,6 +149,8 @@ def main(args):
 	global button2Count
 	global button3Count
 
+	print "are: ", button1Count, button2Count, button3Count
+
 	img = None
 
 	if len(args) == 1:
@@ -204,7 +207,9 @@ def main(args):
 
 	if countFile is None:
 		print "ACKKKKKKK"
-		asdf
+		return 
+
+	print "finished and counts are: ", button1Count, button2Count, button3Count
 
 	countFile.write(str(button1Count) + "\n")					
 	countFile.write(str(button2Count) + "\n")					
