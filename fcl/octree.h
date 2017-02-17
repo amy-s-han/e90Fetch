@@ -19,7 +19,7 @@ public:
 	virtual ~Octree();
 
 	// Accessors
-	virtual std::vector<vec3> points() = 0;
+	virtual std::vector<vec3> getPoints() = 0;
 
 	// tree implementation
 	virtual bool buildTree(std::vector<vec3> points,
@@ -37,3 +37,5 @@ public:
 	vec3 center;
 	ccd_real_t radius;
 };
+
+#endif

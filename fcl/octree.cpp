@@ -12,8 +12,8 @@ Octree::~Octree(){
 	//delete stuff?
 }
 
-std::vector<vec3> Octree::points(){
-	return points
+std::vector<vec3> Octree::getPoints(){
+	return points;
 }
 
 bool Octree::buildTree(std::vector<vec3> points,
@@ -22,6 +22,9 @@ bool Octree::buildTree(std::vector<vec3> points,
 						   Bounds &b,
 						   int currentDepth){
 
+	// not sure what to do here yet
+
+	return false;
 
 }
 
@@ -91,5 +94,5 @@ Bounds Octree::boundingBox(std::vector<vec3> points){
 
 bool Octree::traverse(){
 	//not sure what to do here yet
-
+	return false;
 }
