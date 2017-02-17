@@ -18,7 +18,13 @@ static const vec3 ccolors[ncolors] = {
   vec3(1.0, 0.0, 1.0),
 };
 
-class CCDDemo: public MzGlutApp {
+typedef struct {
+  vec3 center;
+  ccd_real_t radius;
+} Bounds;
+
+
+class FCLDemo: public MzGlutApp {
 public:
 
   ccd_real_t arena_radius;
@@ -33,6 +39,10 @@ public:
   std::vector< std::vector<vec3> > opoints;
 
   std::vector< bool > colliding;
+  std::vector<vec3> pointCloud;
+
+  // std::vector<ccd_real_t> boundingBoxParam;
+  Bounds b;
 
   Checker checker;
   
@@ -52,12 +62,13 @@ public:
                  mt_genrand_real1()*2-1 );
   }
 
-  CCDDemo(int argc, char** argv):
+
+  FCLDemo(int argc, char** argv):
     MzGlutApp(argc, argv) 
   {
 
     initWindowSize(640, 480);
-    createWindow("CCD Demo");
+    createWindow("FCL Demo");
     setupBasicLight(vec4f(1,1,1,0));
 
     camera.aim(vec3f(0, 0, 6),
@@ -72,24 +83,23 @@ public:
 
     arena_radius = 1.5;
 
-    objects.push_back(transform(dilate(new Box(vec3(0.5)), 0.25), Transform3(vec3(1, 0, 0))));
-    objects.push_back(transform(capsule(0.5, 0.25), Transform3(vec3(0, -1, 0))));
-    objects.push_back(transform(new Box(vec3(1)), Transform3(vec3(-1, 0, 0))));
-    objects.push_back(transform(sphere(0.5), Transform3(vec3(0, 1, 0))));
-    objects.push_back(transform(new Cylinder(1, 0.5), Transform3(vec3(0, 0, -1))));
+    // make a box
+    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
 
+    // make a point cloud
+    vec3 point1 = vec3(0, 1, -1);
+    vec3 point2 = vec3(1, 0, 0);
+    vec3 point3 = vec3(-2, 0, 1);
+    vec3 point4 = vec3(0, -1, 0);
+    vec3 point5 = vec3(0, 1, -2);
 
-    /*
-    CCD_BOX(box);
-    box.pos.v[0] = -1;
-    box.x = box.y = box.z = 1;
+    // add to point cloud vector
+    pointCloud.push_back(point1);
+    pointCloud.push_back(point2);
+    pointCloud.push_back(point3);
+    pointCloud.push_back(point4);
+    pointCloud.push_back(point5);
 
-    objects.push_back(new CCDConvex(box));
-
-    box.pos.v[0] = 1;
-
-    objects.push_back(new CCDConvex(box));
-    */
 
     for (size_t i=0; i<objects.size(); ++i) {
       pos_rate.push_back( 0.02 * randVec() );
@@ -148,6 +158,74 @@ public:
 
   }
 
+  void boundingBox(){
+    // Find bounding box
+    int xlo= 0; 
+    int ylo = 0;
+    int xhigh = 0;
+    int yhigh = 0; 
+    int zlo = 0;
+    int zhigh = 0; 
+
+    std::cout << xlo << ylo << xhigh << yhigh << zlo << zhigh  << std::endl;
+
+    for (size_t i=0; i<pointCloud.size(); ++i) {
+      std::cout << "Point " << i << ": ";
+      std::cout << pointCloud[i] << std::endl;
+
+      if (pointCloud[i][0] < xlo){
+        xlo = pointCloud[i][0];
+      } else if (pointCloud[i][0] > xhigh){
+        xhigh = pointCloud[i][0];
+      }
+
+      if (pointCloud[i][1] < ylo){
+        ylo = pointCloud[i][1];
+      } else if (pointCloud[i][1] > yhigh){
+        yhigh = pointCloud[i][1];
+      }
+
+      if (pointCloud[i][2] < zlo){
+        zlo = pointCloud[i][2];
+      } else if (pointCloud[i][2] > zhigh){
+        zhigh = pointCloud[i][2];
+      }
+
+    }
+
+    std::cout << "Bounding vars: (" << xlo << ", " << xhigh << "), (" << ylo << ", " << yhigh << "), (" << zlo << ", " << zhigh << ")";
+
+    ccd_real_t xcenter = (xhigh - xlo) / 2.0;
+    ccd_real_t ycenter = (yhigh - ylo) / 2.0;
+    ccd_real_t zcenter = (zhigh - zlo) / 2.0;
+
+    std::cout << "center is: " << xcenter << ", " << ycenter << ", " << zcenter << std::endl;
+
+    ccd_real_t boxRadius = std::max( std::max(abs(xcenter), abs(ycenter)) , abs(zcenter));
+
+    std::cout << "box radius: " << boxRadius << std::endl;
+
+    
+    b.center = vec3(xcenter, ycenter, zcenter);
+    b.radius = boxRadius;
+
+    // boundingBoxParam.push_back(xcenter);
+    // boundingBoxParam.push_back(ycenter);
+    // boundingBoxParam.push_back(zcenter);
+    // boundingBoxParam.push_back(ccd_real_t(boxRadius));
+
+  }
+
+  void fclCheck(){
+
+    std::cout << "Does this work?" << std::endl;
+
+    boundingBox();
+
+
+
+  }
+
   virtual void timer(int value) {
 
     if (animating) {
@@ -176,6 +254,8 @@ public:
       }
 
       checkAll();
+
+      fclCheck();
 
     }
 
@@ -215,6 +295,24 @@ public:
       glstuff::color(color);
       objects[i]->render(helper);
     }
+
+    // draw point cloud
+    vec3 fwd(camera.modelview().row(2).trunc());
+    glPointSize(2.0);
+    glBegin(GL_POINTS);
+    for (size_t i=0; i<pointCloud.size(); i++){
+      glVertex3d(pointCloud[i][0], pointCloud[i][1], pointCloud[i][2]);
+    }
+    glEnd();
+
+    // draw bounding box
+
+    TransformedConvex* boundedBox = transform(new Box(vec3(b.radius)), Transform3(b.center));
+    vec3 color = ccolors[5];
+    glstuff::color(color);
+    boundedBox->render(helper);
+
+
 
     glPopAttrib();
 
@@ -362,7 +460,7 @@ public:
 
 int main(int argc, char** argv) {
 
-  CCDDemo demo(argc, argv);
+  FCLDemo demo(argc, argv);
   demo.run();
   
   return 0;
