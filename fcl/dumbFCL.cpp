@@ -45,6 +45,8 @@ public:
   std::vector< std::vector<vec3> > opoints;
 
   std::vector< bool > colliding;
+
+  std::vector< bool > pointInCube;
   std::vector<vec3> pointCloud;
 
   Checker checker;
@@ -88,14 +90,18 @@ public:
 
     // make a box
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
+
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, -1))));
+    pointInCube.resize(objects.size(), false);
 
     // make a point cloud
     vec3 point1 = vec3(0, 0.5, -1);
     vec3 point2 = vec3(1, 0, 0);
     vec3 point3 = vec3(-0.5, 0, 1);
-    vec3 point4 = vec3(0, -1, 0);
-    vec3 point5 = vec3(0, 1, -0.5);
+    vec3 point4 = vec3(0, 0, -1);
+    vec3 point5 = vec3(-0.5, 1, -0.5);
+    vec3 point6 = vec3(0, 1, 1);
+    vec3 point7 = vec3(-0.5, 1, 0);
 
     // add to point cloud vector
     pointCloud.push_back(point1);
@@ -103,6 +109,8 @@ public:
     pointCloud.push_back(point3);
     pointCloud.push_back(point4);
     pointCloud.push_back(point5);
+    pointCloud.push_back(point6);
+    pointCloud.push_back(point7);
 
 
     for (size_t i=0; i<objects.size(); ++i) {
@@ -122,6 +130,8 @@ public:
 
    
     checkAll();
+    dumbFCLCheck();
+
     
     setTimer(20, 0);
 
@@ -168,6 +178,8 @@ public:
 
     std::cout << "Does this work?" << std::endl;
 
+    pointInCube.clear();
+    pointInCube.resize(objects.size(), false);
 
     vec3 point;
     vec3* pc = NULL;
@@ -179,6 +191,7 @@ public:
         point = pointCloud[j];
         if(obj->contains(point, pc)){
           std::cout << "point is inside box!\n";
+          pointInCube[i] = true;
 
         } else {
           std::cout << "point is not inside box!\n";
@@ -252,7 +265,7 @@ public:
     
     for (size_t i=0; i<objects.size(); ++i) {
       vec3 color = ccolors[i % ncolors];
-      if (colliding[i]) {
+      if (colliding[i] || pointInCube[i]) {
         for (int i=0; i<3; ++i) {
           if (!color[i]) { color[i] = 0.75; }
         }
@@ -270,6 +283,7 @@ public:
       glVertex3d(pointCloud[i][0], pointCloud[i][1], pointCloud[i][2]);
     }
     glEnd();
+
 
     glPopAttrib();
 
