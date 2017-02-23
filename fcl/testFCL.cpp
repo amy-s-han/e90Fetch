@@ -35,6 +35,10 @@ typedef struct {
   ccd_real_t radius;
 } Bounds;
 
+typedef struct{
+  size_t objectIndex;
+  std::vector<size_t> pointIndices;
+} CollidingObjects;
 
 
 class Octree {
@@ -45,9 +49,17 @@ public:
   ccd_real_t radius;
   int height;
   bool isLeaf;
+  std::vector<CollidingObjects> fclReport;
+  Checker checker;
+  ccd_real_t dmin;
+  QueryType qtype;
+
+
 
   void clearOctree(){
     points.clear();
+    isLeaf = false;
+    fclReport.clear();
   }
 
   void printPoints(){
@@ -73,6 +85,75 @@ public:
     }
   }
 
+  void traverseAndCheck(TransformedConvex* obj, size_t objIndex){
+    std::cout << "hereeeee and center: " << center << "and radius: " << radius << std::endl << std::flush;
+
+    vec3* pc = NULL;
+    TransformedConvex* box = transform(new Box(vec3(radius)), Transform3(center));
+    Report report;
+
+    // first check if the object hits the bounding box of this octree
+    if(checker.query(qtype, &report, box, obj, dmin)){
+      // the object hits the bounding box of this octree
+
+      // if you are a leaf, check if the obj hits any of the points
+      if(isLeaf){
+        std::cout << "I'M A LEAF!!!!!!!!!" << std::endl;
+        for(size_t i=0; i<points.size(); i++){
+          if(obj->contains(points[i], pc)){
+            // this object collides with this point. make a report
+            std::cout << "THERE'S BEEN A COLLISION!!!!!!!!" << std::endl;
+
+            // check if there is already a report for this object:
+            bool reportExists = false;
+            for(size_t j=0; j<fclReport.size(); j++){
+              if(fclReport[j].objectIndex == objIndex){
+                fclReport[j].pointIndices.push_back(i);
+                reportExists = true;
+                break;
+              } 
+            }
+
+            if(!reportExists){ // make a report for this object   
+              CollidingObjects c;
+              c.objectIndex = objIndex;
+              c.pointIndices.push_back(i);
+              fclReport.push_back(c);
+            }
+          }
+        }
+      } else {
+
+        //otherwise traverse into each child and check if the object hits the leaf
+        delete box;
+
+        for(int i=0; i<8; i++){
+          // check if the child is defined
+          if(child[i] != NULL){
+            std::cout << "traversing child: " << i << std::endl << std::flush;
+            child[i]->traverseAndCheck(obj, objIndex); 
+          }
+
+        }
+        return;  
+      }
+    } 
+
+    // otherwise the object doesn't hit this bounding box and it doesn't matter
+    delete box;
+    
+  }
+
+  void checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &fclReportMasterList){
+
+    traverseAndCheck(obj, objIndex);
+
+    for(size_t i=0; i<fclReport.size(); i++){
+      fclReportMasterList.push_back(fclReport[i]);
+    }
+
+  }
+
   bool buildOctree(std::vector<vec3> incomingPoints,
                int threshold,
                int maxDepth,
@@ -84,24 +165,15 @@ public:
     //                   2. currDepth >= maxDepth
 
 
-    std::cout << "cout why don't you work" << std::endl;
-    
-    std::cout << "cout why don't you work" << currDepth << std::endl;
-
-    return false;
-
-    std::cout << "maxDepth: " << maxDepth << "currDepth: " << currDepth << std::endl;
-    
-
     for(size_t i = 0; i < incomingPoints.size(); i++){
-      std::cout << "incomingPoints```" << incomingPoints[i] << std::endl;
+      // std::cout << "incomingPoints```" << incomingPoints[i] << std::endl;
       points.push_back(incomingPoints[i]);
     }
 
 
-    for(size_t i = 0; i < points.size(); i++){
-      std::cout << "points```" << points[i] << std::endl;
-    }
+    // for(size_t i = 0; i < points.size(); i++){
+    //   std::cout << "points```" << points[i] << std::endl;
+    // }
 
     if(incomingPoints.size() <= (unsigned int) threshold || currDepth >= maxDepth){
       points = incomingPoints;
@@ -134,8 +206,6 @@ public:
       ccd_real_t pX = p[0];
       ccd_real_t pY = p[1];
       ccd_real_t pZ = p[2];
-
-      std::cout << "point: " << p << std::endl;
 
       if(pX >= centerX){ // +x
         if(pY >= centerY){ // +x, +y
@@ -182,31 +252,37 @@ public:
           }
         }
       }
-
-      std::vector<vec3> cubePointList[8] = {cube1, cube2, cube3, cube4, cube5, cube6, cube7};
-
-      // recursively create the 8 subTrees
-      for(int i = 0; i < 8; i++){
-        if(currDepth == 0){
-          std::cout << "LALALALA building child: " << i << std::endl;
-        }
-
-        if(!cubePointCounts[i]){ // no points in this cube
-          continue;
-        }
-
-        child[i] = new Octree();
-
-        vec3 offset = boundsOffsetTable[i] * b.radius;
-        Bounds newBounds;
-        newBounds.radius = b.radius * 0.5;
-        newBounds.center = b.center + offset;
-
-        child[i]->height = currDepth + 1;
-        child[i]->buildOctree(cubePointList[i], threshold, maxDepth, newBounds, currDepth + 1);
-
-      }
     }
+    std::vector<vec3> cubePointList[8] = {cube1, cube2, cube3, cube4, cube5, cube6, cube7};
+
+    // recursively create the 8 subTrees
+    for(int i = 0; i < 8; i++){
+      if(currDepth == 0){
+      }
+
+      if(!cubePointCounts[i]){ // no points in this cube
+        child[i] = NULL;
+        continue;
+      }
+
+      child[i] = new Octree();
+
+      vec3 offset = boundsOffsetTable[i] * b.radius;
+      Bounds newBounds;
+      newBounds.radius = b.radius * 0.5;
+      newBounds.center = b.center + offset;
+
+      child[i]->radius = newBounds.radius;
+      child[i]->center = newBounds.center;
+      child[i]->height = currDepth + 1;
+      child[i]->checker = checker;
+      child[i]->dmin = dmin;
+      child[i]->qtype = qtype;
+
+      child[i]->buildOctree(cubePointList[i], threshold, maxDepth, newBounds, currDepth + 1);
+
+    }
+    
 
     return true;
   }
@@ -289,8 +365,10 @@ public:
   std::vector<vec3> rot_rate;
 
   std::vector<Report> reports;
+  std::vector<CollidingObjects> fclReport;
 
   std::vector< bool > colliding;
+  std::vector< bool > collideWithPointCloud;
   std::vector<vec3> pointCloud;
 
   Bounds bound; // for boundingBoxTest
@@ -339,11 +417,13 @@ public:
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
 
     // make a point cloud
-    vec3 point1 = vec3(0, 0.5, -1);
+    vec3 point1 = vec3(-1, 0.1, 0);
     vec3 point2 = vec3(1, 0, 0);
     vec3 point3 = vec3(-0.5, 0, 1);
-    vec3 point4 = vec3(0, -1, 0);
-    vec3 point5 = vec3(0, 1, -0.5);
+    vec3 point4 = vec3(0, 0, -1);
+    vec3 point5 = vec3(-0.5, 1, -0.5);
+    vec3 point6 = vec3(0, 1, 1);
+    vec3 point7 = vec3(-0.5, 1, 0);
 
     // add to point cloud vector
     pointCloud.push_back(point1);
@@ -351,6 +431,8 @@ public:
     pointCloud.push_back(point3);
     pointCloud.push_back(point4);
     pointCloud.push_back(point5);
+    pointCloud.push_back(point6);
+    pointCloud.push_back(point7);
 
 
     for (size_t i=0; i<objects.size(); ++i) {
@@ -359,7 +441,8 @@ public:
     }
 
     colliding.resize( objects.size(), false );
-    
+    collideWithPointCloud.resize(objects.size(), false);
+
     animating = false;
     draw_points = false;
     draw_spheres = false;
@@ -371,8 +454,12 @@ public:
     octRoot = new Octree();
     octRoot->height = 0;
     octRoot->isLeaf = false;
+    octRoot->checker = checker;
+    octRoot->dmin = dmin;
+    octRoot->qtype = qtype;
 
     checkAll();
+    fclCheck();
     
     setTimer(20, 0);
 
@@ -498,8 +585,25 @@ public:
    
     std::cout << "BUILD TREE FINISH" << std::endl;
 
+    // clear fclCollisionReport
+    fclReport.clear();
+    octRoot->fclReport.clear();
 
-    // eventually should loop through all objects?
+    // loop through objects and check for collisions
+    for(size_t i=0; i<objects.size(); i++){
+      std::cout << "Now checking fcl for object: " << i << std::endl;
+      octRoot->checkForCollisions(objects[i], i, fclReport);
+
+    }
+
+    std::cout << "size of fcl report is now: " << fclReport.size() << std::endl;
+    for(size_t i=0; i<fclReport.size(); i++){
+      std::cout << "object index: " << fclReport[i].objectIndex << std::endl;
+      std::cout << "point indices: " << std::endl;
+      for(size_t j=0; j<fclReport[i].pointIndices.size(); j++){
+        std::cout << "point " << j << ": " << fclReport[i].pointIndices[j] << std::endl;
+      }
+    }
 
   }
 
