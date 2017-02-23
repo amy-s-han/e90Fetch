@@ -88,6 +88,7 @@ public:
   void traverseAndCheck(TransformedConvex* obj, size_t objIndex){
     std::cout << "hereeeee and center: " << center << "and radius: " << radius << std::endl << std::flush;
 
+    // box is at -1, 0, 0 -> point is at -1, 0.1, 0.1
     vec3* pc = NULL;
     TransformedConvex* box = transform(new Box(vec3(radius)), Transform3(center));
     Report report;
@@ -95,6 +96,7 @@ public:
     // first check if the object hits the bounding box of this octree
     if(checker.query(qtype, &report, box, obj, dmin)){
       // the object hits the bounding box of this octree
+      std::cout << "OBJECT HITS THIS CHILD" << std::endl;
 
       // if you are a leaf, check if the obj hits any of the points
       if(isLeaf){
@@ -417,7 +419,7 @@ public:
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
 
     // make a point cloud
-    vec3 point1 = vec3(-1, 0.1, 0);
+    vec3 point1 = vec3(-1, 0.1, 0.1);
     vec3 point2 = vec3(1, 0, 0);
     vec3 point3 = vec3(-0.5, 0, 1);
     vec3 point4 = vec3(0, 0, -1);
@@ -692,6 +694,19 @@ public:
     vec3 color = ccolors[5];
     glstuff::color(color);
     boundedBox->render(helper);
+
+    // draw first 8 children of bounded box
+    for (size_t i=0; i<8; ++i) {
+      Octree* child= octRoot->child[i];
+      if(child != NULL){
+        TransformedConvex* box = transform(new Box(vec3(child->radius)), Transform3(child->center));
+        vec3 color = ccolors[i % ncolors];
+        glstuff::color(color);
+        box->render(helper);
+        delete box;
+      }
+    }
+      
 
 
 
