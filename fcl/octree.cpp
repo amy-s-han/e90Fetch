@@ -3,7 +3,11 @@
 #include <sstream>
 
 
-Octree::Octree(){}
+Octree::Octree(){
+	for(int i = 0; i<8; i++){
+		child[i] = NULL;
+	}
+}
 
 Octree::~Octree(){
 	for(size_t i=0; i<8; i++){
@@ -26,13 +30,11 @@ void Octree::printPoints(){
 
 void Octree::printOctree(){
 	if(isLeaf){
-	  std::cout << "Leaf Node of height " << height << " and points: " << std::endl;
 	  printPoints();
 	  return;
 	}
 
 	for(int i = 0; i < 8; i++){
-	  std::cout << "Printing child " << i << std::endl;
 	  if(child[i]->points.empty()){
 	    return; // nothing to print
 	  } else {
@@ -42,8 +44,6 @@ void Octree::printOctree(){
 	}
 
 	void Octree::traverseAndCheck(TransformedConvex* obj, size_t objIndex){
-	std::cout << "hereeeee and center: " << center << "and radius: " << radius << std::endl << std::flush;
-	std::cout << "DEPTH: " << height << std::endl;
 
 	// box is at -1, 0, 0 -> point is at -1, 0.1, 0.1 and child 6 contains this point and box
 	vec3* pc = NULL;
@@ -53,15 +53,12 @@ void Octree::printOctree(){
 	// first check if the object hits the bounding box of this octree
 	if(checker.query(qtype, &report, box, obj, 0)){
 	  // the object hits the bounding box of this octree
-	  std::cout << "OBJECT HITS THIS CHILD" << std::endl;
 
 	  // if you are a leaf, check if the obj hits any of the points
 	  if(isLeaf){
-	    std::cout << "I'M A LEAF!!!!!!!!!" << std::endl;
 	    for(size_t i=0; i<points.size(); i++){
 	      if(obj->contains(points[i], pc)){
 	        // this object collides with this point. make a report
-	        std::cout << "THERE'S BEEN A COLLISION!!!!!!!!" << std::endl;
 
 	        // check if there is already a report for this object:
 	        bool reportExists = false;
@@ -90,7 +87,6 @@ void Octree::printOctree(){
 	    for(int i=0; i<8; i++){
 	      // check if the child is defined
 	      if(child[i] != NULL){
-	        std::cout << "\n\ntraversing child: " << i << std::endl;
 	        child[i]->traverseAndCheck(obj, objIndex);
 
 	        // if the child made a collision report, copy it up
@@ -98,9 +94,7 @@ void Octree::printOctree(){
 	          fclReport.push_back(child[i]->fclReport[j]);
 	        }
 
-	      } else {
-	        std::cout << "child " << i << " is null so skipping traversal" << std::endl;
-	      }
+	      } 
 
 	    }
 	    return;  
@@ -119,7 +113,6 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	if(fclReport.size() > 0){
 	  for(size_t i=0; i<fclReport.size(); i++){
 	    fclReportMasterList.push_back(fclReport[i]);
-	    std::cout << "copying report: " << i << std::endl;
 	  }
 	  return true;
 	}
@@ -129,10 +122,10 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	}
 
 	bool Octree::buildOctree(std::vector<vec3> incomingPoints,
-	           int threshold,
-	           int maxDepth,
-	           Bounds &b,
-	           int currDepth){
+								           int threshold,
+								           int maxDepth,
+								           Bounds &b,
+								           int currDepth){
 
 	// check if you are a leaf
 	// you are a leaf if 1. num points <= threshold
@@ -140,14 +133,8 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 
 
 	for(size_t i = 0; i < incomingPoints.size(); i++){
-	  // std::cout << "incomingPoints```" << incomingPoints[i] << std::endl;
 	  points.push_back(incomingPoints[i]);
 	}
-
-
-	// for(size_t i = 0; i < points.size(); i++){
-	//   std::cout << "points```" << points[i] << std::endl;
-	// }
 
 	if(incomingPoints.size() <= (unsigned int) threshold || currDepth >= maxDepth){
 	  points = incomingPoints;
@@ -227,34 +214,30 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	    }
 	  }
 	}
+
+
 	std::vector<vec3> cubePointList[8] = {cube0, cube1, cube2, cube3, cube4, cube5, cube6, cube7};
 
 	// recursively create the 8 subTrees
 	for(int i = 0; i < 8; i++){
 
-	  std::cout << "DEPTH: " << currDepth << " and CHILD " << i << " has " << cubePointCounts[i] << " points. " << std::endl;
-
 	  if(!cubePointCounts[i]){ // no points in this cube
-	    std::cout << "SET CHILD : " << i << " TO NULL" << std::endl;
 	    child[i] = NULL;
 	    continue;
+	  } 
+
+
+	  if(child[i] == NULL){
+	  	child[i] = new Octree();
 	  } else {
-	    std::cout << "CHLID : " << i << " IS NOT NULL AND HAS POINTS:" << std::endl;
-	    for(size_t j=0; j<cubePointList[i].size(); j++){
-	      std::cout << "POINT: " << cubePointList[i][j] << std::endl;
-	    }
+	  	child[i]->clearOctree();
 	  }
 
-	  child[i] = new Octree();
 
 	  vec3 offset = boundsOffsetTable[i] * b.radius * 0.5;
 	  Bounds newBounds;
 	  newBounds.radius = b.radius * 0.5;
 	  newBounds.center = b.center + offset;
-
-	  std::cout << "offset: " << offset << std::endl;
-	  std::cout << "center is: " << newBounds.center << std::endl;
-	  std::cout << "box radius: " << newBounds.radius << std::endl;
 
 	  child[i]->radius = newBounds.radius;
 	  child[i]->center = newBounds.center;
@@ -285,8 +268,6 @@ Bounds Octree::boundingBox(std::vector<vec3> points){
 	ccd_real_t x, y, z;
 
 	for (size_t i=0; i<points.size(); ++i) {
-	  std::cout << "Point " << i << ": ";
-	  std::cout << points[i] << std::endl;
 
 	  x = points[i][0];
 	  y = points[i][1];
@@ -325,10 +306,5 @@ Bounds Octree::boundingBox(std::vector<vec3> points){
 	if (b.radius < radius[2]) b.radius = radius[2];
 
 	b.radius = b.radius * 1.05; // fudge factor
-
-	std::cout << "Bounding vars, max: " << max << " and min: " << min << std::endl;
-	std::cout << "center is: " << b.center << std::endl;
-	std::cout << "box radius: " << b.radius << std::endl;
-
 	return b;
 }

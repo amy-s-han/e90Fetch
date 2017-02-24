@@ -53,6 +53,11 @@ public:
   Checker checker;
   QueryType qtype;
 
+  Octree(){
+    for(int i = 0; i<8; i++){
+      child[i] = NULL;
+    }
+  }
 
   void clearOctree(){
     points.clear();
@@ -591,7 +596,10 @@ public:
 
   void fclCheck(){
 
-    boundingBoxTest();
+    // boundingBoxTest();
+
+    // clear the tree
+    octRoot->clearOctree();
 
     // build the octree
     int threshold = 1;
@@ -602,12 +610,11 @@ public:
     octRoot->center = bound1.center;
     octRoot->radius = bound1.radius;
 
-    // clear the tree
-    octRoot->clearOctree();
+
 
     std::cout << "BUILD TREE START" << std::endl;
 
-    octRoot->buildOctree(pointCloud, threshold, maxDepth, bound, currDepth);
+    octRoot->buildOctree(pointCloud, threshold, maxDepth, bound1, currDepth);
    
     std::cout << "BUILD TREE FINISH" << std::endl;
 
