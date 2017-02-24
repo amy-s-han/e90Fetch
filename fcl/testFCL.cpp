@@ -269,10 +269,14 @@ public:
 
       child[i] = new Octree();
 
-      vec3 offset = boundsOffsetTable[i] * b.radius;
+      vec3 offset = boundsOffsetTable[i] * b.radius * 0.5;
       Bounds newBounds;
       newBounds.radius = b.radius * 0.5;
       newBounds.center = b.center + offset;
+
+      std::cout << "offset: " << offset << std::endl;
+      std::cout << "center is: " << b.center << std::endl;
+      std::cout << "box radius: " << b.radius << std::endl;
 
       child[i]->radius = newBounds.radius;
       child[i]->center = newBounds.center;
@@ -336,7 +340,7 @@ public:
     vec3 max = vec3(xhigh, yhigh, zhigh);
 
     // The radius (dimensions in each direction)
-    vec3 radius = max - min;
+    vec3 radius = max - min; // length of the edge of square
 
     b.center = min + radius * 0.5;
 
@@ -696,9 +700,19 @@ public:
     boundedBox->render(helper);
 
     // draw first 8 children of bounded box
+
+    glPointSize(2.0);
+    glBegin(GL_POINTS);
     for (size_t i=0; i<8; ++i) {
       Octree* child= octRoot->child[i];
       if(child != NULL){
+        // std::cout << "radius: " << child->radius << " and center: " << child->center << std::endl;
+        // to show centers of child cubes:
+        // vec3 color = ccolors[i % ncolors];
+        // glColor3fv( color.v );
+        // glVertex3d(child->center[0], child->center[1], child->center[2]);
+
+        // to draw child cubes: 
         TransformedConvex* box = transform(new Box(vec3(child->radius)), Transform3(child->center));
         vec3 color = ccolors[i % ncolors];
         glstuff::color(color);
@@ -706,7 +720,7 @@ public:
         delete box;
       }
     }
-      
+    glEnd();  
 
 
 
