@@ -13,93 +13,247 @@ from argparse import ArgumentParser
 
 # I guess I'm prototyping here and if it works, I'll translate it into c++???
 
-def detectButton(img):
-	try:
+class buttonTemplateMatching:
 
-		#img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3) #not sure if needed
+	def __init__(self):
+		# load templates of elevator buttons
+		self.button1 = []
+		self.button2 = []
+		self.button3 = []
 
-		img = cv2.medianBlur(img,5)
-        print "here"
-		cimg = cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
-        print "but not here"
-		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=75, param2=71) 
-        print "got here"
-        print circles
+		pathPrefix = 'templatePics/'
 
-        if circles:
+		buttonIndex = 0
 
+		while(1):
+
+			workDone = False
+
+			for buttonNumber in range(1,4):
+
+				picPath = pathPrefix + str(buttonNumber) + "button" + str(buttonIndex) + ".jpg"
+
+				if os.path.isfile(picPath): 
+					pic = cv2.imread(picPath)
+			
+					if pic is None:
+						print picname, "did not load properly"
+						continue
+
+					pic = cv2.cvtColor(pic, cv2.COLOR_BGR2GRAY)
+
+					if buttonNumber == 1:
+						self.button1.append(pic)
+					elif buttonNumber == 2:
+						self.button2.append(pic)
+					else:
+						self.button3.append(pic)
+
+					workDone = True
+
+
+			buttonIndex += 1
+
+			if not workDone:
+				break
+
+		print "finished loading templates"
+
+		# debug
+		# for i in self.button1:
+		# 	cv2.imshow("1", i)
+		# 	cv2.waitKey(0)
+
+		# for i in self.button2:
+		# 	cv2.imshow("2", i)
+		# 	cv2.waitKey(0)
+
+		# for i in self.button3:
+		# 	cv2.imshow("3", i)
+		# 	cv2.waitKey(0)
+
+	def adjustPicture(self, img):
+		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+
+		w,h = img.shape[:2]
+		rows,cols = img.shape
+		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+		img = cv2.warpAffine(img,M,(cols,rows))
+
+		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
+
+		return img
+
+	def checkCirclesDetected(self, grayImg, circles):
+		colorImg = cv2.cvtColor(grayImg,cv2.COLOR_GRAY2BGR)
+
+		if circles is not None:
 			circles = np.uint16(np.around(circles))
-			toSortCircles = np.int16(np.around(circles))
 
-			# draw all circles
 			for i in circles[0,:]:
 				# draw the outer circle
-				cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+				cv2.circle(colorImg,(i[0],i[1]),i[2],(0,255,0),2)
 				# draw the center of the circle
-				cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
-				print i
+				cv2.circle(colorImg,(i[0],i[1]),2,(0,0,255),3)
 
-			sortedCircle = toSortCircles[0]
-			# print "before sorting", sortedCircle
+		cv2.imshow('Detected Circles, press q to quit',colorImg)
+		decision = cv2.waitKey(0)
+		cv2.destroyAllWindows()
 
-			sortedCircle = sortedCircle[sortedCircle[:,1].argsort()]
-			print "after sorting", sortedCircle
+		return decision
 
-			candidates = []
-			numCircles = sortedCircle.shape[0]
+	def findAllNumberedButtons(self, img, debug=False):
 
-			for i in range(1, numCircles):
+		img = cv2.medianBlur(img,5)
+		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-				# if y for this circle is far away from y of last circle,
-				# that means that this is a new row of circles and this might 
-				# be a candidate
-				if abs(sortedCircle[i][1] - sortedCircle[i-1][1]) > 0.1 * sortedCircle[i-1][1]:
-					# check if this circle has a neighbour that is on the same row.
-					# if no neighbour on the same row, then add to candidates
+		w,h = img.shape[:2]
+		rows,cols = img.shape
+		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+		img = cv2.warpAffine(img,M,(cols,rows))
 
-					if abs(sortedCircle[i][1] - sortedCircle[i+1][1]) > 0.1 * sortedCircle[i-1][1]:
-						candidates.append(sortedCircle[i])
+		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
 
-				# if this is the last circle: 
-				if i == numCircles - 1:
-					#check to see if this circle is a candidate
-					if len(candidates) != 0:
-						if abs(sortedCircle[i][0] - candidates[0][0]) < 0.1 * candidates[0][0]:
-							candidates.append(sortedCircle[i])
-				
-			print candidates
+		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
 
-			badIndices = []
+		if self.checkCirclesDetected(img, circles) == 1048689: # q was pressed, exit
+			print "\nExiting.\n"
+			return
 
-			# print "\n\n here \n\n"
+		bestMatchButtonNumber = []
+		bestMatchRes = []
+		buttonImages = []
 
-			# run through candidates to make sure they have similar x 
-			for i in range(1, len(candidates)):
-				# check that the buttons are vertically aligned
-				if abs(candidates[i][0] - candidates[i-1][0]) > 0.05 * candidates[i-1][0]:
-					badIndices.append(i)
+		test = []
 
-			# print badIndices
-
-			if badIndices != []:
-				for bad in badIndices:
-					candidates.remove(bad)
-
-			# print candidates
-
-			# draw out the elevator floor buttons
-			for circ in candidates:
-				cv2.circle(cimg, (circ[0], circ[1]), circ[2], (255, 0, 0), 3)
-
-			cv2.imshow('detected circles',cimg)
-			return candidates
-		else:
-			print "no circles"
+		if circles is None:
+			print "No circles detected, returning None"
 			return None
 
+		for i in circles[0,:]:
+
+			# extract square img that includes circle
+
+			center = (i[0], i[1])
+			radius = i[2]
+
+			fudge = 5
+			fudgedRadius = radius + fudge
+
+			# draw a bounding box
+			p0 = (center[0] - fudgedRadius, center[1] + fudgedRadius)
+			p1 = (center[0] + fudgedRadius, center[1] - fudgedRadius)
+
+			buttonImg = img[p1[1]:p0[1], p0[0]:p1[0]]
+			
+			bImgHeight, bImgWidth = buttonImg.shape[:2]
+
+			if bImgHeight <= 0 or bImgWidth <= 0 or bImgHeight > h or bImgWidth > w:
+				print "buttonImg is not valid with w,h = ", (bImgHeight, bImgWidth), ". Skipping."
+				continue
+
+			#resize picture to 64x64
+			buttonImg = cv2.resize(buttonImg, dsize=(64, 64))
+
+			if debug:
+				cv2.imshow('buttonImg',buttonImg)
+				if cv2.waitKey(0) == 1048689: # q was pressed
+					return
+
+			bestMatchingRes = 0
+			bestMatchingButton = None
+			
+			buttonClasses = [self.button1, self.button2, self.button3]
+
+			for i in range(3):
+				buttonClass = buttonClasses[i]
+				highestRes = 0
+
+				for template in buttonClass:
+					res = cv2.matchTemplate(buttonImg, template, cv2.TM_CCORR_NORMED)
+					# print res
+
+					# cv2.imshow('template',template)
+					# if cv2.waitKey(0) == 1048689: # q was pressed
+					# 	return
+
+					if res[0][0] > highestRes:
+						highestRes = res[0][0]
+				
+				if highestRes > bestMatchingRes:
+					bestMatchingRes = highestRes
+					bestMatchingButton = i+1
+
+			if debug:
+				print "this image looks like button ", bestMatchingButton, "with res: ", bestMatchingRes
+
+				cv2.imshow('buttonImg',buttonImg)
+				if cv2.waitKey(0) == 1048689: # q was pressed
+					return
+
+			buttonImages.append(buttonImg)
+			bestMatchButtonNumber.append(bestMatchingButton)
+			bestMatchRes.append(bestMatchingRes)
+
+			test.append([bestMatchingRes, bestMatchingButton, buttonImg, (center, radius)])
+
+		test.sort(key=lambda x: x[0], reverse=True)
+
+		if debug:
+			for item in test:
+				print "Results: This image looks like button ", item[1], "with res: ", item[0]
+				cv2.imshow("image", item[2])
+				if cv2.waitKey(0) == 1048689: # q was pressed
+					return
+		
+		top3 = []
+
+		top3Range = min(3, len(test))
+		for i in range(top3Range):
+			print "res: ", test[i][0]
+			circleInfo = test[i][3]
+			buttonNumber = test[i][1]
+
+			top3.append([circleInfo, buttonNumber])
+
+		return top3
+
+def newTemplateMatching(ntm, img)
+	try: 
+		scaled = ntm.adjustPicture(img)
+		colorImg = cv2.cvtColor(scaled,cv2.COLOR_GRAY2BGR)
+
+
+		# allButtons = ntm.findAllNumberedButtons(img, True)
+		allButtons = ntm.findAllNumberedButtons(img)
+
+		if allButtons is None:
+			print "No buttons detected!"
+			return 
+
+		for i in allButtons:
+			circleInfo = i[0]
+			buttonNumber = i[1]
+
+			center = circleInfo[0]
+			radius = circleInfo[1]
+
+			# draw outer circle
+			cv2.circle(colorImg, center, radius, (0,255,0), 2)
+			# draw the center of the circle
+			cv2.circle(colorImg, center, 2, (0,0,255), 3)
+
+			font = cv2.FONT_HERSHEY_SIMPLEX
+			cv2.putText(colorImg, str(buttonNumber), (int(center[0] - 0.25*radius), int(center[1] + 0.25*radius)), font, 1, (255, 0, 0), thickness = 2)
+
+		cv2.imshow("img", colorImg)
+		if cv2.waitKey(0) == 1048689: # q was pressed
+			return allButtons
+			
 	except:
 		pass
 
+		
 class elevatorButtonDetector:
 
 	def __init__(self):
@@ -121,7 +275,9 @@ class elevatorButtonDetector:
 		cv2.imshow(self.window, img)
 		cv2.waitKey(3)
 
-		floorButtons = detectButton(img)
+		ntm = buttonTemplateMatching()
+		floorButtons = newTemplateMatching(ntm, img)
+
 		if floorButtons: 
 			self.button_exist_pub.publish(floorButtons)
 			print "Published. ", floorButtons.len, " elevator buttons detected."
