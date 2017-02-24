@@ -37,7 +37,7 @@ typedef struct {
 
 typedef struct{
   size_t objectIndex;
-  std::vector<size_t> pointIndices;
+  std::vector<vec3> collidingPoints;
 } CollidingObjects;
 
 
@@ -51,9 +51,7 @@ public:
   bool isLeaf;
   std::vector<CollidingObjects> fclReport;
   Checker checker;
-  ccd_real_t dmin;
   QueryType qtype;
-
 
 
   void clearOctree(){
@@ -87,14 +85,15 @@ public:
 
   void traverseAndCheck(TransformedConvex* obj, size_t objIndex){
     std::cout << "hereeeee and center: " << center << "and radius: " << radius << std::endl << std::flush;
+    std::cout << "DEPTH: " << height << std::endl;
 
-    // box is at -1, 0, 0 -> point is at -1, 0.1, 0.1
+    // box is at -1, 0, 0 -> point is at -1, 0.1, 0.1 and child 6 contains this point and box
     vec3* pc = NULL;
     TransformedConvex* box = transform(new Box(vec3(radius)), Transform3(center));
     Report report;
 
     // first check if the object hits the bounding box of this octree
-    if(checker.query(qtype, &report, box, obj, dmin)){
+    if(checker.query(qtype, &report, box, obj, 0)){
       // the object hits the bounding box of this octree
       std::cout << "OBJECT HITS THIS CHILD" << std::endl;
 
@@ -110,7 +109,7 @@ public:
             bool reportExists = false;
             for(size_t j=0; j<fclReport.size(); j++){
               if(fclReport[j].objectIndex == objIndex){
-                fclReport[j].pointIndices.push_back(i);
+                fclReport[j].collidingPoints.push_back(points[i]);
                 reportExists = true;
                 break;
               } 
@@ -119,8 +118,9 @@ public:
             if(!reportExists){ // make a report for this object   
               CollidingObjects c;
               c.objectIndex = objIndex;
-              c.pointIndices.push_back(i);
+              c.collidingPoints.push_back(points[i]);
               fclReport.push_back(c);
+
             }
           }
         }
@@ -132,8 +132,16 @@ public:
         for(int i=0; i<8; i++){
           // check if the child is defined
           if(child[i] != NULL){
-            std::cout << "traversing child: " << i << std::endl << std::flush;
-            child[i]->traverseAndCheck(obj, objIndex); 
+            std::cout << "\n\ntraversing child: " << i << std::endl;
+            child[i]->traverseAndCheck(obj, objIndex);
+
+            // if the child made a collision report, copy it up
+            for(size_t j=0; j<child[i]->fclReport.size(); j++){
+              fclReport.push_back(child[i]->fclReport[j]);
+            }
+ 
+          } else {
+            std::cout << "child " << i << " is null so skipping traversal" << std::endl;
           }
 
         }
@@ -146,13 +154,19 @@ public:
     
   }
 
-  void checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &fclReportMasterList){
+  bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &fclReportMasterList){
 
     traverseAndCheck(obj, objIndex);
 
-    for(size_t i=0; i<fclReport.size(); i++){
-      fclReportMasterList.push_back(fclReport[i]);
+    if(fclReport.size() > 0){
+      for(size_t i=0; i<fclReport.size(); i++){
+        fclReportMasterList.push_back(fclReport[i]);
+        std::cout << "copying report: " << i << std::endl;
+      }
+      return true;
     }
+    
+    return false;
 
   }
 
@@ -216,17 +230,17 @@ public:
             cube0.push_back(p);
             cubePointCounts[0] ++;
           } else { // +x, +y, -z
-            // point belongs to cube1
+            // point belongs to cube 1
             cube1.push_back(p);
             cubePointCounts[1] ++; 
           }
         } else { // +x, -y
           if(pZ >= centerZ){ // +x, -y, +z
-            // point belongs in cube 0
+            // point belongs in cube 2
             cube2.push_back(p);
             cubePointCounts[2] ++;
           } else { // +x, -y, -z
-            // point belongs to cube1
+            // point belongs to cube 3
             cube3.push_back(p);
             cubePointCounts[3] ++; 
           }
@@ -234,40 +248,50 @@ public:
       } else { // -x
         if(pY >= centerY){ // -x, +y
           if(pZ >= centerZ){ // -x, +y, +z
-            // point belongs in cube 0
+            // point belongs in cube 4
             cube4.push_back(p);
             cubePointCounts[4] ++;
           } else { // -x, +y, -z
-            // point belongs to cube1
+            // point belongs to cube 5
             cube5.push_back(p);
             cubePointCounts[5] ++; 
           }
         } else { // -x, -y
           if(pZ >= centerZ){ // +x, -y, +z
-            // point belongs in cube 0
+            // point belongs in cube 6
             cube6.push_back(p);
             cubePointCounts[6] ++;
           } else { // -x, -y, -z
-            // point belongs to cube1
+            // point belongs to cube 7
             cube7.push_back(p);
             cubePointCounts[7] ++; 
           }
         }
       }
     }
-    std::vector<vec3> cubePointList[8] = {cube1, cube2, cube3, cube4, cube5, cube6, cube7};
+    std::vector<vec3> cubePointList[8] = {cube0, cube1, cube2, cube3, cube4, cube5, cube6, cube7};
 
     // recursively create the 8 subTrees
     for(int i = 0; i < 8; i++){
-      if(currDepth == 0){
-      }
+
+      std::cout << "DEPTH: " << currDepth << " and CHILD " << i << " has " << cubePointCounts[i] << " points. " << std::endl;
 
       if(!cubePointCounts[i]){ // no points in this cube
+        std::cout << "SET CHILD : " << i << " TO NULL" << std::endl;
         child[i] = NULL;
         continue;
+      } else {
+        std::cout << "CHLID : " << i << " IS NOT NULL AND HAS POINTS:" << std::endl;
+        for(size_t j=0; j<cubePointList[i].size(); j++){
+          std::cout << "POINT: " << cubePointList[i][j] << std::endl;
+        }
       }
 
-      child[i] = new Octree();
+      if(child[i] == NULL){
+        child[i] = new Octree();
+      } else {
+        child[i]->clearOctree();
+      }
 
       vec3 offset = boundsOffsetTable[i] * b.radius * 0.5;
       Bounds newBounds;
@@ -275,14 +299,13 @@ public:
       newBounds.center = b.center + offset;
 
       std::cout << "offset: " << offset << std::endl;
-      std::cout << "center is: " << b.center << std::endl;
-      std::cout << "box radius: " << b.radius << std::endl;
+      std::cout << "center is: " << newBounds.center << std::endl;
+      std::cout << "box radius: " << newBounds.radius << std::endl;
 
       child[i]->radius = newBounds.radius;
       child[i]->center = newBounds.center;
       child[i]->height = currDepth + 1;
       child[i]->checker = checker;
-      child[i]->dmin = dmin;
       child[i]->qtype = qtype;
 
       child[i]->buildOctree(cubePointList[i], threshold, maxDepth, newBounds, currDepth + 1);
@@ -374,7 +397,7 @@ public:
   std::vector<CollidingObjects> fclReport;
 
   std::vector< bool > colliding;
-  std::vector< bool > collideWithPointCloud;
+  std::vector< bool > fclCollision;
   std::vector<vec3> pointCloud;
 
   Bounds bound; // for boundingBoxTest
@@ -421,6 +444,7 @@ public:
 
     // make a box
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
+    // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, -1, 1))));
 
     // make a point cloud
     vec3 point1 = vec3(-1, 0.1, 0.1);
@@ -447,7 +471,7 @@ public:
     }
 
     colliding.resize( objects.size(), false );
-    collideWithPointCloud.resize(objects.size(), false);
+    fclCollision.resize(objects.size(), false);
 
     animating = false;
     draw_points = false;
@@ -461,7 +485,6 @@ public:
     octRoot->height = 0;
     octRoot->isLeaf = false;
     octRoot->checker = checker;
-    octRoot->dmin = dmin;
     octRoot->qtype = qtype;
 
     checkAll();
@@ -568,17 +591,14 @@ public:
 
   void fclCheck(){
 
-    std::cout << "Does this work?" << std::endl;
-
     boundingBoxTest();
 
     // build the octree
     int threshold = 1;
     int maxDepth = 4;
     int currDepth = 0;
-    Bounds bound1 = octRoot->boundingBox(pointCloud);
 
-    // std::cout << "bound1.center: " << bound1.center << "bound1.radius: " << bound1.radius << std::endl;
+    Bounds bound1 = octRoot->boundingBox(pointCloud);
     octRoot->center = bound1.center;
     octRoot->radius = bound1.radius;
 
@@ -591,23 +611,39 @@ public:
    
     std::cout << "BUILD TREE FINISH" << std::endl;
 
+    for (size_t i=0; i<3; ++i) {
+      Octree* child= octRoot->child[i];
+      if(child != NULL){
+        std::cout << "CHLID : " << i << " IS NOT NULL AND HAS POINTS:" << std::endl;
+        for(size_t j=0; j<child->points.size(); j++){
+          std::cout << "POINT: " << child->points[j] << std::endl;
+        }
+        
+      } else {
+        std::cout << "```child " << i << " is null..." << std::endl;
+      }
+    }
+
     // clear fclCollisionReport
     fclReport.clear();
     octRoot->fclReport.clear();
+    bool collides;
 
     // loop through objects and check for collisions
     for(size_t i=0; i<objects.size(); i++){
-      std::cout << "Now checking fcl for object: " << i << std::endl;
-      octRoot->checkForCollisions(objects[i], i, fclReport);
-
+      collides = false;
+      std::cout << "Now checking fcl for object: " << i << std::endl << std::endl;
+      collides = octRoot->checkForCollisions(objects[i], i, fclReport);
+      fclCollision[i] = collides;
+      
     }
 
     std::cout << "size of fcl report is now: " << fclReport.size() << std::endl;
     for(size_t i=0; i<fclReport.size(); i++){
       std::cout << "object index: " << fclReport[i].objectIndex << std::endl;
       std::cout << "point indices: " << std::endl;
-      for(size_t j=0; j<fclReport[i].pointIndices.size(); j++){
-        std::cout << "point " << j << ": " << fclReport[i].pointIndices[j] << std::endl;
+      for(size_t j=0; j<fclReport[i].collidingPoints.size(); j++){
+        std::cout << "point " << j << ": " << fclReport[i].collidingPoints[j] << std::endl;
       }
     }
 
@@ -638,6 +674,10 @@ public:
 
         c->xform = Transform3(q, p);
 
+      }
+
+      for (size_t i=0; i<pointCloud.size(); i++){
+        // do something to get the points to move around???
       }
 
       checkAll();
@@ -673,7 +713,7 @@ public:
     
     for (size_t i=0; i<objects.size(); ++i) {
       vec3 color = ccolors[i % ncolors];
-      if (colliding[i]) {
+      if (colliding[i] || fclCollision[i]) {
         for (int i=0; i<3; ++i) {
           if (!color[i]) { color[i] = 0.75; }
         }
@@ -694,33 +734,46 @@ public:
 
     // draw bounding box
 
-    TransformedConvex* boundedBox = transform(new Box(vec3(bound.radius)), Transform3(bound.center));
-    vec3 color = ccolors[5];
-    glstuff::color(color);
-    boundedBox->render(helper);
+    // TransformedConvex* boundedBox = transform(new Box(vec3(bound.radius)), Transform3(bound.center));
+    // vec3 color = ccolors[5];
+    // glstuff::color(color);
+    // boundedBox->render(helper);
+    // delete boundedBox;
 
     // draw first 8 children of bounded box
 
-    glPointSize(2.0);
-    glBegin(GL_POINTS);
-    for (size_t i=0; i<8; ++i) {
-      Octree* child= octRoot->child[i];
-      if(child != NULL){
-        // std::cout << "radius: " << child->radius << " and center: " << child->center << std::endl;
-        // to show centers of child cubes:
-        // vec3 color = ccolors[i % ncolors];
-        // glColor3fv( color.v );
-        // glVertex3d(child->center[0], child->center[1], child->center[2]);
+    // for (size_t i=0; i<8; ++i) {
+    //   Octree* child= octRoot->child[i];
+    //   if(child != NULL){
+    //     // std::cout << "```drawing child " << i << std::endl;
+    //     // std::cout << "radius: " << child->radius << " and center: " << child->center << std::endl;
 
-        // to draw child cubes: 
-        TransformedConvex* box = transform(new Box(vec3(child->radius)), Transform3(child->center));
-        vec3 color = ccolors[i % ncolors];
-        glstuff::color(color);
-        box->render(helper);
-        delete box;
-      }
-    }
-    glEnd();  
+    //     // to draw child cubes: 
+    //     TransformedConvex* box = transform(new Box(vec3(child->radius)), Transform3(child->center));
+    //     vec3 color = ccolors[i % ncolors];
+    //     glstuff::color(color);
+    //     box->render(helper);
+    //     delete box;
+    //   } else {
+    //     // std::cout << "```child " << i << " is null..." << std::endl;
+    //   }
+    // }
+
+    // to show centers of child cubes:
+    // glPointSize(2.0);
+    // glBegin(GL_POINTS);
+    // for (size_t i=0; i<3; ++i) {
+    //   Octree* child= octRoot->child[i];
+    //   if(child != NULL){
+    //     
+    //     vec3 color = ccolors[i % ncolors];
+    //     glColor3fv( color.v );
+    //     glVertex3d(child->center[0], child->center[1], child->center[2]);
+    //   } else {
+    //     std::cout << "```child " << i << " is null..." << std::endl;
+    //   }
+    // }
+    // glEnd();  
 
 
 
