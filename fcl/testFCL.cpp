@@ -449,7 +449,7 @@ public:
 
     // make a box
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
-    // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, -1, 1))));
+    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, -1, 1))));
 
     // make a point cloud
     vec3 point1 = vec3(-1, 0.1, 0.1);
