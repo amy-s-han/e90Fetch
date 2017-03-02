@@ -19,7 +19,7 @@ Octree::~Octree(){
 void Octree::clearOctree(){
 	points.clear();
 	isLeaf = false;
-	fclReport.clear();
+	spccReport.clear();
 }
 
 void Octree::printPoints(){
@@ -62,9 +62,9 @@ void Octree::printOctree(){
 
 	        // check if there is already a report for this object:
 	        bool reportExists = false;
-	        for(size_t j=0; j<fclReport.size(); j++){
-	          if(fclReport[j].objectIndex == objIndex){
-	            fclReport[j].collidingPoints.push_back(points[i]);
+	        for(size_t j=0; j<spccReport.size(); j++){
+	          if(spccReport[j].objectIndex == objIndex){
+	            spccReport[j].collidingPoints.push_back(points[i]);
 	            reportExists = true;
 	            break;
 	          } 
@@ -74,7 +74,7 @@ void Octree::printOctree(){
 	          CollidingObjects c;
 	          c.objectIndex = objIndex;
 	          c.collidingPoints.push_back(points[i]);
-	          fclReport.push_back(c);
+	          spccReport.push_back(c);
 
 	        }
 	      }
@@ -90,8 +90,8 @@ void Octree::printOctree(){
 	        child[i]->traverseAndCheck(obj, objIndex);
 
 	        // if the child made a collision report, copy it up
-	        for(size_t j=0; j<child[i]->fclReport.size(); j++){
-	          fclReport.push_back(child[i]->fclReport[j]);
+	        for(size_t j=0; j<child[i]->spccReport.size(); j++){
+	          spccReport.push_back(child[i]->spccReport[j]);
 	        }
 
 	      } 
@@ -106,13 +106,13 @@ void Octree::printOctree(){
 
 }
 
-bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &fclReportMasterList){
+bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList){
 
 	traverseAndCheck(obj, objIndex);
 
-	if(fclReport.size() > 0){
-	  for(size_t i=0; i<fclReport.size(); i++){
-	    fclReportMasterList.push_back(fclReport[i]);
+	if(spccReport.size() > 0){
+	  for(size_t i=0; i<spccReport.size(); i++){
+	    spccReportMasterList.push_back(spccReport[i]);
 	  }
 	  return true;
 	}

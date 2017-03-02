@@ -38,7 +38,7 @@ public:
 	void printPoints();
 	void printOctree();
 	void traverseAndCheck(TransformedConvex* obj, size_t objIndex);
-	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &fclReportMasterList);
+	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList);
 	bool buildOctree(std::vector<vec3> incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
 	Bounds boundingBox(std::vector<vec3> points);
 
@@ -52,7 +52,7 @@ public:
 	ccd_real_t radius;
 	int height;
 	bool isLeaf;
-	std::vector<CollidingObjects> fclReport;
+	std::vector<CollidingObjects> spccReport;
 	Checker checker;
 	QueryType qtype;
 

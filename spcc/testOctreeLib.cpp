@@ -21,7 +21,7 @@ static const vec3 ccolors[ncolors] = {
   vec3(1.0, 0.0, 1.0),
 };
 
-class FCLDemo: public MzGlutApp {
+class SPCCDemo: public MzGlutApp {
 public:
 
   ccd_real_t arena_radius;
@@ -32,10 +32,10 @@ public:
   std::vector<vec3> rot_rate;
 
   std::vector<Report> reports;
-  std::vector<CollidingObjects> fclReport;
+  std::vector<CollidingObjects> spccReport;
 
   std::vector< bool > colliding;
-  std::vector< bool > fclCollision;
+  std::vector< bool > spccCollision;
   std::vector<vec3> pointCloud;
 
   Octree* octRoot;
@@ -59,12 +59,12 @@ public:
   }
 
 
-  FCLDemo(int argc, char** argv):
+  SPCCDemo(int argc, char** argv):
     MzGlutApp(argc, argv) 
   {
 
     initWindowSize(1024, 768);
-    createWindow("FCL Demo");
+    createWindow("SPCC Demo");
     setupBasicLight(vec4f(1,1,1,0));
 
     camera.aim(vec3f(0, 0, 6),
@@ -82,16 +82,6 @@ public:
     // make a box
     objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, 0))));
     // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, -1, 1))));
-
-    // make a point cloud
-    vec3 point1 = vec3(-1, 0.1, 0.1);
-    vec3 point2 = vec3(1, 0, 0);
-    vec3 point3 = vec3(-0.5, 0, 1);
-    vec3 point4 = vec3(0, 0, -1);
-    vec3 point5 = vec3(-0.5, 1, -0.5);
-    vec3 point6 = vec3(0, 1, 1);
-    vec3 point7 = vec3(-0.5, 1, 0);
-
 
     float x, y, z;
 
@@ -123,7 +113,7 @@ public:
     }
 
     colliding.resize( objects.size(), false );
-    fclCollision.resize(objects.size(), false);
+    spccCollision.resize(objects.size(), false);
 
     animating = false;
     draw_points = false;
@@ -142,7 +132,7 @@ public:
     checkAll();
 
 
-    fclCheck();
+    spccCheck();
     
     setTimer(20, 0);
 
@@ -184,7 +174,7 @@ public:
 
   }
 
-  void fclCheck(){
+  void spccCheck(){
 
     octRoot->clearOctree();
 
@@ -210,25 +200,25 @@ public:
       }
     }
 
-    // clear fclCollisionReport
-    fclReport.clear();
-    octRoot->fclReport.clear();
+    // clear spccCollisionReport
+    spccReport.clear();
+    octRoot->spccReport.clear();
     bool collides;
 
     // loop through objects and check for collisions
     for(size_t i=0; i<objects.size(); i++){
       collides = false;
-      collides = octRoot->checkForCollisions(objects[i], i, fclReport);
-      fclCollision[i] = collides;
+      collides = octRoot->checkForCollisions(objects[i], i, spccReport);
+      spccCollision[i] = collides;
       
     }
 
-    std::cout << "size of fcl report is now: " << fclReport.size() << std::endl;
-    for(size_t i=0; i<fclReport.size(); i++){
-      std::cout << "object index: " << fclReport[i].objectIndex << std::endl;
+    std::cout << "size of spcc report is now: " << spccReport.size() << std::endl;
+    for(size_t i=0; i<spccReport.size(); i++){
+      std::cout << "object index: " << spccReport[i].objectIndex << std::endl;
       std::cout << "point indices: " << std::endl;
-      for(size_t j=0; j<fclReport[i].collidingPoints.size(); j++){
-        std::cout << "point " << j << ": " << fclReport[i].collidingPoints[j] << std::endl;
+      for(size_t j=0; j<spccReport[i].collidingPoints.size(); j++){
+        std::cout << "point " << j << ": " << spccReport[i].collidingPoints[j] << std::endl;
       }
     }
 
@@ -267,7 +257,7 @@ public:
 
       checkAll();
 
-      // fclCheck();
+      // spccCheck();
 
     }
 
@@ -298,7 +288,7 @@ public:
     
     for (size_t i=0; i<objects.size(); ++i) {
       vec3 color = ccolors[i % ncolors];
-      if (colliding[i] || fclCollision[i]) {
+      if (colliding[i] || spccCollision[i]) {
         for (int i=0; i<3; ++i) {
           if (!color[i]) { color[i] = 0.75; }
         }
@@ -511,7 +501,7 @@ public:
 
 int main(int argc, char** argv) {
 
-  FCLDemo demo(argc, argv);
+  SPCCDemo demo(argc, argv);
   demo.run();
   
   return 0;

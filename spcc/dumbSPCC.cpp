@@ -30,7 +30,7 @@ static const vec3 boundsOffsetTable[8] = {
 };
 
 
-class dumbFCL: public MzGlutApp {
+class dumbSPCC: public MzGlutApp {
 public:
 
   ccd_real_t arena_radius;
@@ -41,8 +41,6 @@ public:
   std::vector<vec3> rot_rate;
 
   std::vector<Report> reports;
-
-  std::vector< std::vector<vec3> > opoints;
 
   std::vector< bool > colliding;
 
@@ -68,12 +66,12 @@ public:
   }
 
 
-  dumbFCL(int argc, char** argv):
+  dumbSPCC(int argc, char** argv):
     MzGlutApp(argc, argv) 
   {
 
     initWindowSize(640, 480);
-    createWindow("FCL Demo");
+    createWindow("SPCC Demo");
     setupBasicLight(vec4f(1,1,1,0));
 
     camera.aim(vec3f(0, 0, 6),
@@ -130,7 +128,7 @@ public:
 
    
     checkAll();
-    dumbFCLCheck();
+    dumbSPCCCheck();
 
     
     setTimer(20, 0);
@@ -174,7 +172,7 @@ public:
   }
 
 
-  void dumbFCLCheck(){
+  void dumbSPCCCheck(){
 
     std::cout << "Does this work?" << std::endl;
 
@@ -234,7 +232,7 @@ public:
 
       checkAll();
 
-      dumbFCLCheck();
+      dumbSPCCCheck();
 
     }
 
@@ -431,7 +429,7 @@ public:
 
 int main(int argc, char** argv) {
 
-  dumbFCL demo(argc, argv);
+  dumbSPCC demo(argc, argv);
   demo.run();
   
   return 0;
