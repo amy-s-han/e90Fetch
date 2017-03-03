@@ -82,6 +82,7 @@ void Octree::printOctree(){
 	  } else {
 
 	    //otherwise traverse into each child and check if the object hits the leaf
+      delete box->child;
 	    delete box;
 
 	    for(int i=0; i<8; i++){
@@ -102,6 +103,7 @@ void Octree::printOctree(){
 	} 
 
 	// otherwise the object doesn't hit this bounding box and it doesn't matter
+  delete box->child;
 	delete box;
 
 }

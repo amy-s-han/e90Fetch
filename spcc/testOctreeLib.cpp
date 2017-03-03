@@ -176,6 +176,9 @@ public:
 
   void spccCheck(){
 
+    TimeStamp start = TimeStamp::now();
+
+
     octRoot->clearOctree();
 
     // build the octree
@@ -190,6 +193,9 @@ public:
     // clear the tree
 
     octRoot->buildOctree(pointCloud, threshold, maxDepth, bound1, currDepth);
+
+    TimeStamp buildTreeTimeEnd = TimeStamp::now();
+    double buildTreeTime = (buildTreeTimeEnd-start).toDouble();
 
     for (size_t i=0; i<3; ++i) {
       Octree* child= octRoot->child[i];
@@ -213,14 +219,22 @@ public:
       
     }
 
+    TimeStamp end = TimeStamp::now();
+    double elapsed = (end-start).toDouble();
+
+    std::cout << "It took me " << buildTreeTime << " seconds to build the tree and " << elapsed << " seconds to run SPCC." << std::endl;
+    std::cout << "Building the tree took: " << (buildTreeTime/elapsed)*100 << "% of the overall time" << std::endl;
+    std::cout << "other ratio: " << elapsed/buildTreeTime << std::endl;
     std::cout << "size of spcc report is now: " << spccReport.size() << std::endl;
-    for(size_t i=0; i<spccReport.size(); i++){
-      std::cout << "object index: " << spccReport[i].objectIndex << std::endl;
-      std::cout << "point indices: " << std::endl;
-      for(size_t j=0; j<spccReport[i].collidingPoints.size(); j++){
-        std::cout << "point " << j << ": " << spccReport[i].collidingPoints[j] << std::endl;
-      }
-    }
+    
+    // std::cout << "Collision report: " << std::endl;
+    // for(size_t i=0; i<spccReport.size(); i++){
+    //   std::cout << "object index: " << spccReport[i].objectIndex << std::endl;
+    //   std::cout << "point indices: " << std::endl;
+    //   for(size_t j=0; j<spccReport[i].collidingPoints.size(); j++){
+    //     std::cout << "point " << j << ": " << spccReport[i].collidingPoints[j] << std::endl;
+    //   }
+    // }
 
   }
 
@@ -257,7 +271,7 @@ public:
 
       checkAll();
 
-      // spccCheck();
+      spccCheck();
 
     }
 
@@ -313,6 +327,7 @@ public:
     // vec3 color = ccolors[5];
     // glstuff::color(color);
     // boundedBox->render(helper);
+    // delete boundedBox->child;
     // delete boundedBox;
 
     // draw first 8 children of bounded box
@@ -328,7 +343,9 @@ public:
     //     vec3 color = ccolors[i % ncolors];
     //     glstuff::color(color);
     //     box->render(helper);
+    //     delete box->child;
     //     delete box;
+
     //   } else {
     //     // std::cout << "```child " << i << " is null..." << std::endl;
     //   }

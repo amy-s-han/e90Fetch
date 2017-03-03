@@ -4,6 +4,7 @@
 #include <mzcommon/mersenne.h>
 #include <mzcommon/TimeUtil.h>
 #include <sstream>
+#include <ctime>
 
 using namespace ccdw;
 
@@ -84,31 +85,60 @@ public:
 
     cubePoints(20, points);
 
-    arena_radius = 1.5;
+    arena_radius = 4;
 
     // make a box
-    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
+    // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(-1, 0, 0))));
 
-    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, -1))));
+    // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, -1))));
+
+    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, 0))));
+    
     pointInCube.resize(objects.size(), false);
 
-    // make a point cloud
-    vec3 point1 = vec3(0, 0.5, -1);
-    vec3 point2 = vec3(1, 0, 0);
-    vec3 point3 = vec3(-0.5, 0, 1);
-    vec3 point4 = vec3(0, 0, -1);
-    vec3 point5 = vec3(-0.5, 1, -0.5);
-    vec3 point6 = vec3(0, 1, 1);
-    vec3 point7 = vec3(-0.5, 1, 0);
+    // // make a point cloud
+    // vec3 point1 = vec3(-1, 0.1, 0.1);
+    // vec3 point2 = vec3(1, 0, 0);
+    // vec3 point3 = vec3(-0.5, 0, 1);
+    // vec3 point4 = vec3(0, 0, -1);
+    // vec3 point5 = vec3(-0.5, 1, -0.5);
+    // vec3 point6 = vec3(0, 1, 1);
+    // vec3 point7 = vec3(-0.5, 1, 0);
 
-    // add to point cloud vector
-    pointCloud.push_back(point1);
-    pointCloud.push_back(point2);
-    pointCloud.push_back(point3);
-    pointCloud.push_back(point4);
-    pointCloud.push_back(point5);
-    pointCloud.push_back(point6);
-    pointCloud.push_back(point7);
+    // // add to point cloud vector
+    // pointCloud.push_back(point1);
+    // pointCloud.push_back(point2);
+    // pointCloud.push_back(point3);
+    // pointCloud.push_back(point4);
+    // pointCloud.push_back(point5);
+    // pointCloud.push_back(point6);
+    // pointCloud.push_back(point7);
+
+
+    float x, y, z;
+
+    int step = 350;
+    int max = 2;
+
+    for(int i = 0; i < step; i++){
+      x = (max * 1.0 * i)/step;
+      for(int j = 0; j < step; j++){
+        y = (max * 1.0 * j)/step;
+        z = 1 - (pow(x, 2) + pow(y, 2));
+        if(z < 0.9*arena_radius && z > -0.9*arena_radius){
+          pointCloud.push_back(vec3(x, y, z));
+          pointCloud.push_back(vec3(-x, -y, z));
+          pointCloud.push_back(vec3(x, y, -z));
+          pointCloud.push_back(vec3(-x, -y, -z));
+
+        }
+
+      }
+    }
+
+    std::cout << "Number of points: " << pointCloud.size() << std::endl;
+
+
 
 
     for (size_t i=0; i<objects.size(); ++i) {
@@ -128,6 +158,7 @@ public:
 
    
     checkAll();
+
     dumbSPCCCheck();
 
     
@@ -174,7 +205,7 @@ public:
 
   void dumbSPCCCheck(){
 
-    std::cout << "Does this work?" << std::endl;
+    TimeStamp start = TimeStamp::now();
 
     pointInCube.clear();
     pointInCube.resize(objects.size(), false);
@@ -182,25 +213,40 @@ public:
     vec3 point;
     vec3* pc = NULL;
     TransformedConvex* obj;
+
+    bool pointInBox = false;
+    size_t pointInd;
+
     for (size_t i=0; i<objects.size(); ++i) {
       obj = objects[i];
       for(size_t j=0; j<pointCloud.size(); ++j){
 
         point = pointCloud[j];
         if(obj->contains(point, pc)){
-          std::cout << "point is inside box!\n";
           pointInCube[i] = true;
+          pointInBox = true;
+          pointInd = j;
 
-        } else {
-          std::cout << "point is not inside box!\n";
-        }
+        } 
 
       }
 
     }
 
+    TimeStamp end = TimeStamp::now();
+    double elapsed = (end-start).toDouble();
 
-    
+
+    if(pointInBox){
+      std::cout << "\nPoint " << pointInd << " is inside box!\n";
+
+    } else {
+      std::cout << "No points are inside box!\n";
+
+    }
+
+    std::cout << "It took me " << elapsed << " seconds)." << std::endl;
+
   }
 
   virtual void timer(int value) {
@@ -231,7 +277,7 @@ public:
       }
 
       checkAll();
-
+    
       dumbSPCCCheck();
 
     }
