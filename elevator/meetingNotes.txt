@@ -21,3 +21,9 @@ rostopic echo /head_camera/rgb/image_raw
 
 Haven't finished:
 inside8
+
+
+point cloud tf to base link
+brute force concept
+
+

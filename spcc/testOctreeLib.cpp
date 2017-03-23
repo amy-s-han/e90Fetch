@@ -85,7 +85,7 @@ public:
 
     float x, y, z;
 
-    int step = 350;
+    int step = 75;
     int max = 2;
 
     for(int i = 0; i < step; i++){
@@ -192,19 +192,12 @@ public:
 
     // clear the tree
 
+    TimeStamp buildTreeTimeStart = TimeStamp::now();
+
     octRoot->buildOctree(pointCloud, threshold, maxDepth, bound1, currDepth);
 
     TimeStamp buildTreeTimeEnd = TimeStamp::now();
-    double buildTreeTime = (buildTreeTimeEnd-start).toDouble();
-
-    for (size_t i=0; i<3; ++i) {
-      Octree* child= octRoot->child[i];
-      if(child != NULL){
-        for(size_t j=0; j<child->points.size(); j++){
-        }
-        
-      }
-    }
+    double buildTreeTime = (buildTreeTimeEnd-buildTreeTimeStart).toDouble();
 
     // clear spccCollisionReport
     spccReport.clear();
@@ -224,7 +217,7 @@ public:
 
     std::cout << "It took me " << buildTreeTime << " seconds to build the tree and " << elapsed << " seconds to run SPCC." << std::endl;
     std::cout << "Building the tree took: " << (buildTreeTime/elapsed)*100 << "% of the overall time" << std::endl;
-    std::cout << "other ratio: " << elapsed/buildTreeTime << std::endl;
+    std::cout << "Time not spent building tree: " << elapsed-buildTreeTime << std::endl;
     std::cout << "size of spcc report is now: " << spccReport.size() << std::endl;
     
     // std::cout << "Collision report: " << std::endl;

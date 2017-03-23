@@ -123,7 +123,7 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 
 	}
 
-	bool Octree::buildOctree(std::vector<vec3> incomingPoints,
+	bool Octree::buildOctree(const std::vector<vec3> incomingPoints,
 								           int threshold,
 								           int maxDepth,
 								           Bounds &b,
@@ -132,11 +132,6 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	// check if you are a leaf
 	// you are a leaf if 1. num points <= threshold
 	//                   2. currDepth >= maxDepth
-
-
-	for(size_t i = 0; i < incomingPoints.size(); i++){
-	  points.push_back(incomingPoints[i]);
-	}
 
 	if(incomingPoints.size() <= (unsigned int) threshold || currDepth >= maxDepth){
 	  points = incomingPoints;
@@ -147,25 +142,26 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	isLeaf = false;
 
 	// classify each point to a child node
-	int cubePointCounts[8] = {0};
 
-	std::vector<vec3> cube0; // +x, +y, +z
-	std::vector<vec3> cube1; // +x, +y, -z
-	std::vector<vec3> cube2; // +x, -y, +z
-	std::vector<vec3> cube3; // +x, -y, -z
-	std::vector<vec3> cube4; // -x, +y, +z
-	std::vector<vec3> cube5; // -x, +y, -z
-	std::vector<vec3> cube6; // -x, -y, +z
-	std::vector<vec3> cube7; // -x, -y, -z
+	std::vector<vec3> cubePointList[8];
+
+	// std::vector<vec3> cube0; // +x, +y, +z
+	// std::vector<vec3> cube1; // +x, +y, -z
+	// std::vector<vec3> cube2; // +x, -y, +z 
+	// std::vector<vec3> cube3; // +x, -y, -z
+	// std::vector<vec3> cube4; // -x, +y, +z
+	// std::vector<vec3> cube5; // -x, +y, -z
+	// std::vector<vec3> cube6; // -x, -y, +z
+	// std::vector<vec3> cube7; // -x, -y, -z
 
 	ccd_real_t centerX = b.center[0];
 	ccd_real_t centerY = b.center[1];
 	ccd_real_t centerZ = b.center[2];
 
-	for(size_t i=0; i<points.size(); ++i){
+	for(size_t i=0; i<incomingPoints.size(); ++i){
 
 	  // current point
-	  vec3 p = points[i];
+	  vec3 p = incomingPoints[i];
 	  ccd_real_t pX = p[0];
 	  ccd_real_t pY = p[1];
 	  ccd_real_t pZ = p[2];
@@ -174,56 +170,46 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	    if(pY >= centerY){ // +x, +y
 	      if(pZ >= centerZ){ // +x, +y, +z
 	        // point belongs in cube 0
-	        cube0.push_back(p);
-	        cubePointCounts[0] ++;
+	        cubePointList[0].push_back(p);
 	      } else { // +x, +y, -z
 	        // point belongs to cube 1
-	        cube1.push_back(p);
-	        cubePointCounts[1] ++; 
+	        cubePointList[1].push_back(p);
 	      }
 	    } else { // +x, -y
 	      if(pZ >= centerZ){ // +x, -y, +z
 	        // point belongs in cube 2
-	        cube2.push_back(p);
-	        cubePointCounts[2] ++;
+	        cubePointList[2].push_back(p);
 	      } else { // +x, -y, -z
 	        // point belongs to cube 3
-	        cube3.push_back(p);
-	        cubePointCounts[3] ++; 
+	        cubePointList[3].push_back(p);
 	      }
 	    }
 	  } else { // -x
 	    if(pY >= centerY){ // -x, +y
 	      if(pZ >= centerZ){ // -x, +y, +z
 	        // point belongs in cube 4
-	        cube4.push_back(p);
-	        cubePointCounts[4] ++;
+	        cubePointList[4].push_back(p);
 	      } else { // -x, +y, -z
 	        // point belongs to cube 5
-	        cube5.push_back(p);
-	        cubePointCounts[5] ++; 
+	        cubePointList[5].push_back(p);
 	      }
 	    } else { // -x, -y
 	      if(pZ >= centerZ){ // +x, -y, +z
 	        // point belongs in cube 6
-	        cube6.push_back(p);
-	        cubePointCounts[6] ++;
+	        cubePointList[6].push_back(p);
 	      } else { // -x, -y, -z
 	        // point belongs to cube 7
-	        cube7.push_back(p);
-	        cubePointCounts[7] ++; 
+	        cubePointList[7].push_back(p);
 	      }
 	    }
 	  }
 	}
 
 
-	std::vector<vec3> cubePointList[8] = {cube0, cube1, cube2, cube3, cube4, cube5, cube6, cube7};
-
 	// recursively create the 8 subTrees
 	for(int i = 0; i < 8; i++){
 
-	  if(!cubePointCounts[i]){ // no points in this cube
+	  if(!cubePointList[i].size()){ // no points in this cube
 	    child[i] = NULL;
 	    continue;
 	  } 
