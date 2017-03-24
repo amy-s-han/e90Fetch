@@ -5,26 +5,26 @@
 
 using namespace ccdw;
 
-static const vec3 boundsOffsetTable[8] = {
-  vec3(+0.5, +0.5, +0.5),
-  vec3(+0.5, +0.5, -0.5),
-  vec3(+0.5, -0.5, +0.5),
-  vec3(+0.5, -0.5, -0.5),
-  vec3(-0.5, +0.5, +0.5),
-  vec3(-0.5, +0.5, -0.5),
-  vec3(-0.5, -0.5, +0.5),
-  vec3(-0.5, -0.5, -0.5),
+static const ccdw::vec3 boundsOffsetTable[8] = {
+  ccdw::vec3(+0.5, +0.5, +0.5),
+  ccdw::vec3(+0.5, +0.5, -0.5),
+  ccdw::vec3(+0.5, -0.5, +0.5),
+  ccdw::vec3(+0.5, -0.5, -0.5),
+  ccdw::vec3(-0.5, +0.5, +0.5),
+  ccdw::vec3(-0.5, +0.5, -0.5),
+  ccdw::vec3(-0.5, -0.5, +0.5),
+  ccdw::vec3(-0.5, -0.5, -0.5),
 };
 
 
 typedef struct {
-  vec3 center;
+  ccdw::vec3 center;
   ccd_real_t radius;
 } Bounds;
 
 typedef struct{
   size_t objectIndex;
-  std::vector<vec3> collidingPoints;
+  std::vector<ccdw::vec3> collidingPoints;
 } CollidingObjects;
 
 
@@ -39,16 +39,16 @@ public:
 	void printOctree();
 	void traverseAndCheck(TransformedConvex* obj, size_t objIndex);
 	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList);
-	bool buildOctree(std::vector<vec3> incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
-	Bounds boundingBox(std::vector<vec3> points);
+	bool buildOctree(std::vector<ccdw::vec3> incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
+	Bounds boundingBox(std::vector<ccdw::vec3> points);
 
 
 
 
 
 	Octree* child[8];
-	std::vector<vec3> points;
-	vec3 center;
+	std::vector<ccdw::vec3> points;
+	ccdw::vec3 center;
 	ccd_real_t radius;
 	int height;
 	bool isLeaf;

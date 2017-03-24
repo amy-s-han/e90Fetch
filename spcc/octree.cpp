@@ -46,8 +46,8 @@ void Octree::printOctree(){
 	void Octree::traverseAndCheck(TransformedConvex* obj, size_t objIndex){
 
 	// box is at -1, 0, 0 -> point is at -1, 0.1, 0.1 and child 6 contains this point and box
-	vec3* pc = NULL;
-	TransformedConvex* box = transform(new Box(vec3(radius)), Transform3(center));
+	ccdw::vec3* pc = NULL;
+	TransformedConvex* box = transform(new Box(ccdw::vec3(radius)), Transform3(center));
 	Report report;
 
 	// first check if the object hits the bounding box of this octree
@@ -123,7 +123,7 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 
 	}
 
-	bool Octree::buildOctree(const std::vector<vec3> incomingPoints,
+	bool Octree::buildOctree(const std::vector<ccdw::vec3> incomingPoints,
 								           int threshold,
 								           int maxDepth,
 								           Bounds &b,
@@ -143,16 +143,16 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 
 	// classify each point to a child node
 
-	std::vector<vec3> cubePointList[8];
+	std::vector<ccdw::vec3> cubePointList[8];
 
-	// std::vector<vec3> cube0; // +x, +y, +z
-	// std::vector<vec3> cube1; // +x, +y, -z
-	// std::vector<vec3> cube2; // +x, -y, +z 
-	// std::vector<vec3> cube3; // +x, -y, -z
-	// std::vector<vec3> cube4; // -x, +y, +z
-	// std::vector<vec3> cube5; // -x, +y, -z
-	// std::vector<vec3> cube6; // -x, -y, +z
-	// std::vector<vec3> cube7; // -x, -y, -z
+	// std::vector<ccdw::vec3> cube0; // +x, +y, +z
+	// std::vector<ccdw::vec3> cube1; // +x, +y, -z
+	// std::vector<ccdw::vec3> cube2; // +x, -y, +z 
+	// std::vector<ccdw::vec3> cube3; // +x, -y, -z
+	// std::vector<ccdw::vec3> cube4; // -x, +y, +z
+	// std::vector<ccdw::vec3> cube5; // -x, +y, -z
+	// std::vector<ccdw::vec3> cube6; // -x, -y, +z
+	// std::vector<ccdw::vec3> cube7; // -x, -y, -z
 
 	ccd_real_t centerX = b.center[0];
 	ccd_real_t centerY = b.center[1];
@@ -161,7 +161,7 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	for(size_t i=0; i<incomingPoints.size(); ++i){
 
 	  // current point
-	  vec3 p = incomingPoints[i];
+	  ccdw::vec3 p = incomingPoints[i];
 	  ccd_real_t pX = p[0];
 	  ccd_real_t pY = p[1];
 	  ccd_real_t pZ = p[2];
@@ -222,7 +222,7 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 	  }
 
 
-	  vec3 offset = boundsOffsetTable[i] * b.radius * 0.5;
+	  ccdw::vec3 offset = boundsOffsetTable[i] * b.radius * 0.5;
 	  Bounds newBounds;
 	  newBounds.radius = b.radius * 0.5;
 	  newBounds.center = b.center + offset;
@@ -241,7 +241,7 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 }
 
 
-Bounds Octree::boundingBox(std::vector<vec3> points){
+Bounds Octree::boundingBox(std::vector<ccdw::vec3> points){
 
 	Bounds b;
 
@@ -281,11 +281,11 @@ Bounds Octree::boundingBox(std::vector<vec3> points){
 
 	}
 
-	vec3 min = vec3(xlo, ylo, zlo);
-	vec3 max = vec3(xhigh, yhigh, zhigh);
+	ccdw::vec3 min = ccdw::vec3(xlo, ylo, zlo);
+	ccdw::vec3 max = ccdw::vec3(xhigh, yhigh, zhigh);
 
 	// The radius (dimensions in each direction)
-	vec3 radius = max - min; // length of the edge of square
+	ccdw::vec3 radius = max - min; // length of the edge of square
 
 	b.center = min + radius * 0.5;
 
