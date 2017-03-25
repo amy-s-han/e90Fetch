@@ -1,6 +1,0 @@
-#ifndef _MONKEYS_H_
-#define _MONKEYS_H_
-
-const char* get_monkeys();
-
-#endif
