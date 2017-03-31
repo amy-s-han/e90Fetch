@@ -12,31 +12,31 @@ using namespace ccdw;
 
 enum { ncolors = 6 };
 
-static const vec3 ccolors[ncolors] = {
-  vec3(1.0, 0.0, 0.0),
-  vec3(1.0, 1.0, 0.0),
-  vec3(0.0, 1.0, 0.0),
-  vec3(0.0, 1.0, 1.0),
-  vec3(0.0, 0.0, 1.0),
-  vec3(1.0, 0.0, 1.0),
+static const ccdw::vec3 ccolors[ncolors] = {
+  ccdw::vec3(1.0, 0.0, 0.0),
+  ccdw::vec3(1.0, 1.0, 0.0),
+  ccdw::vec3(0.0, 1.0, 0.0),
+  ccdw::vec3(0.0, 1.0, 1.0),
+  ccdw::vec3(0.0, 0.0, 1.0),
+  ccdw::vec3(1.0, 0.0, 1.0),
 };
 
 class SPCCDemo: public MzGlutApp {
 public:
 
   ccd_real_t arena_radius;
-  std::vector<vec3> points;
+  std::vector<ccdw::vec3> points;
   std::vector<TransformedConvex*> objects;
 
-  std::vector<vec3> pos_rate;
-  std::vector<vec3> rot_rate;
+  std::vector<ccdw::vec3> pos_rate;
+  std::vector<ccdw::vec3> rot_rate;
 
   std::vector<Report> reports;
   std::vector<CollidingObjects> spccReport;
 
   std::vector< bool > colliding;
   std::vector< bool > spccCollision;
-  std::vector<vec3> pointCloud;
+  std::vector<ccdw::vec3> pointCloud;
 
   Octree* octRoot;
 
@@ -52,8 +52,8 @@ public:
   bool draw_spheres;
   bool wireframe;
 
-  static vec3 randVec() {
-    return vec3( mt_genrand_real1()*2-1,
+  static ccdw::vec3 randVec() {
+    return ccdw::vec3( mt_genrand_real1()*2-1,
                  mt_genrand_real1()*2-1,
                  mt_genrand_real1()*2-1 );
   }
@@ -80,8 +80,8 @@ public:
     arena_radius = 4;
 
     // make a box
-    objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, 0, 0))));
-    // objects.push_back(transform(new Box(vec3(0.5)), Transform3(vec3(0, -1, 1))));
+    objects.push_back(transform(new Box(ccdw::vec3(0.5)), Transform3(ccdw::vec3(0, 0, 0))));
+    // objects.push_back(transform(new Box(ccdw::vec3(0.5)), Transform3(ccdw::vec3(0, -1, 1))));
 
     float x, y, z;
 
@@ -94,10 +94,10 @@ public:
         y = (max * 1.0 * j)/step;
         z = 1 - (pow(x, 2) + pow(y, 2));
         if(z < 0.9*arena_radius && z > -0.9*arena_radius){
-          pointCloud.push_back(vec3(x, y, z));
-          pointCloud.push_back(vec3(-x, -y, z));
-          pointCloud.push_back(vec3(x, y, -z));
-          pointCloud.push_back(vec3(-x, -y, -z));
+          pointCloud.push_back(ccdw::vec3(x, y, z));
+          pointCloud.push_back(ccdw::vec3(-x, -y, z));
+          pointCloud.push_back(ccdw::vec3(x, y, -z));
+          pointCloud.push_back(ccdw::vec3(-x, -y, -z));
 
         }
 
@@ -240,7 +240,7 @@ public:
         TransformedConvex* c = objects[i];
 
         quat q = c->xform.rotation();
-        vec3 p = c->xform.translation();
+        ccdw::vec3 p = c->xform.translation();
 
         p += pos_rate[i];
         q = quat::fromOmega(rot_rate[i]) * q;
@@ -294,7 +294,7 @@ public:
     //glDisable(GL_CULL_FACE);
     
     for (size_t i=0; i<objects.size(); ++i) {
-      vec3 color = ccolors[i % ncolors];
+      ccdw::vec3 color = ccolors[i % ncolors];
       if (colliding[i] || spccCollision[i]) {
         for (int i=0; i<3; ++i) {
           if (!color[i]) { color[i] = 0.75; }
@@ -306,7 +306,7 @@ public:
     }
 
     // draw point cloud
-    vec3 fwd(camera.modelview().row(2).trunc());
+    ccdw::vec3 fwd(camera.modelview().row(2).trunc());
     glPointSize(2.0);
     glBegin(GL_POINTS);
     for (size_t i=0; i<pointCloud.size(); i++){
@@ -316,8 +316,8 @@ public:
 
     // draw bounding box
 
-    // TransformedConvex* boundedBox = transform(new Box(vec3(bound.radius)), Transform3(bound.center));
-    // vec3 color = ccolors[5];
+    // TransformedConvex* boundedBox = transform(new Box(ccdw::vec3(bound.radius)), Transform3(bound.center));
+    // ccdw::vec3 color = ccolors[5];
     // glstuff::color(color);
     // boundedBox->render(helper);
     // delete boundedBox->child;
@@ -332,8 +332,8 @@ public:
     //     // std::cout << "radius: " << child->radius << " and center: " << child->center << std::endl;
 
     //     // to draw child cubes: 
-    //     TransformedConvex* box = transform(new Box(vec3(child->radius)), Transform3(child->center));
-    //     vec3 color = ccolors[i % ncolors];
+    //     TransformedConvex* box = transform(new Box(ccdw::vec3(child->radius)), Transform3(child->center));
+    //     ccdw::vec3 color = ccolors[i % ncolors];
     //     glstuff::color(color);
     //     box->render(helper);
     //     delete box->child;
@@ -351,7 +351,7 @@ public:
     //   Octree* child= octRoot->child[i];
     //   if(child != NULL){
     //     
-    //     vec3 color = ccolors[i % ncolors];
+    //     ccdw::vec3 color = ccolors[i % ncolors];
     //     glColor3fv( color.v );
     //     glVertex3d(child->center[0], child->center[1], child->center[2]);
     //   } else {
@@ -369,7 +369,7 @@ public:
       glPushAttrib(GL_POLYGON_BIT);
       glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
       for (size_t i=0; i<objects.size(); ++i) {
-        vec3 c;
+        ccdw::vec3 c;
         objects[i]->center(c);
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
@@ -406,13 +406,13 @@ public:
 
     if (draw_points) {
 
-      vec3 p;
-      vec3 fwd(camera.modelview().row(2).trunc());
+      ccdw::vec3 p;
+      ccdw::vec3 fwd(camera.modelview().row(2).trunc());
 
       glPointSize(2.0);
       glBegin(GL_POINTS);
       for (size_t i=0; i<objects.size(); ++i) {
-        vec3 color = ccolors[ i % ncolors ] * 0.25;
+        ccdw::vec3 color = ccolors[ i % ncolors ] * 0.25;
         glstuff::color(color);
         const Convex* c = objects[i];
         Convex* d = NULL;
@@ -420,7 +420,7 @@ public:
           c = d = dilate(c, 0.5*dmin);
         }
         for (size_t j=0; j<points.size(); ++j) {
-          if (vec3::dot(fwd, points[j]) > 0) {
+          if (ccdw::vec3::dot(fwd, points[j]) > 0) {
             c->support(points[j], p);
             glstuff::vertex(p);
           }
