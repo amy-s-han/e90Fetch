@@ -129,6 +129,11 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 								           Bounds &b,
 								           int currDepth){
 
+	if(height == 0){
+		center = b.center;
+		radius = b.radius;
+	}
+
 	// check if you are a leaf
 	// you are a leaf if 1. num points <= threshold
 	//                   2. currDepth >= maxDepth
