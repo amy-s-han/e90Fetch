@@ -2,6 +2,7 @@
 
 import roslib
 roslib.load_manifest('fetchros')
+
 import sys
 import rospy
 import cv2
@@ -49,9 +50,9 @@ class testNode:
 			
 			w, h = self.img.shape[:2]
 
-			if w > 700 or h > 700:
-				xmag = 640.0/w
-				ymag = 480.0/h
+			if w > 1000 or h > 1000:
+				xmag = 950.0/w
+				ymag = 950.0/h
 
 				mag = max(xmag, ymag)
 
@@ -89,39 +90,6 @@ def main(args):
 	except rospy.ROSInterruptException:
 		pass	
 
-
-# def main(args):
-# 	rospack = rospkg.RosPack()
-
-# 	# get the file path for rospy_tutorials
-# 	packPath = rospack.get_path('fetchros')
-
-# 	print packPath
-
-# 	img = cv2.imread(packPath + '/src/elevatorPics/inside1.jpg')
-
-
-# 	if img is None:
-# 		print "uhhhh image did not load"
-# 		return
-# 	else:
-# 		print "Image loaded"
-
-# 		w, h = img.shape[:2]
-
-# 		if w > 700 or h > 480:
-# 			xmag = 640.0/w
-# 			ymag = 480.0/h
-# 			print xmag, ymag
-
-# 			img = cv2.resize(img, (0, 0), fx=xmag, fy=ymag)
-# 		w, h = img.shape[:2]
-		
-# 		print w, h
-
-# 		cv2.imshow("img", img)
-# 		cv2.waitKey()
-		
 
 if __name__ == '__main__':
 	main(sys.argv) 
