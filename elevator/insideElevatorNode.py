@@ -1,27 +1,41 @@
 #!/usr/bin/env python
+
 import roslib
-import sys
-import rospy
+roslib.load_manifest('fetchros')
+
 import cv2
 import cv2.cv as cv
+from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
+import os.path
+import rospy
+import rospkg
+import sys
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
-from argparse import ArgumentParser
+
+from fetchros.msg import button
+from fetchros.msg import elevatorButtonArray
+
+# control at 100Hz
+CONTROL_PERIOD = rospy.Duration(5)
+# CONTROL_PERIOD = rospy.Duration(0.01)
+
+# wait time between actions
+# WAIT_DURATION = rospy.Duration(0.5)
+WAIT_DURATION = rospy.Duration(30)
 
 
-# I guess I'm prototyping here and if it works, I'll translate it into c++???
 
 class buttonTemplateMatching:
 
-	def __init__(self):
+	def __init__(self, path):
 		# load templates of elevator buttons
 		self.button1 = []
 		self.button2 = []
 		self.button3 = []
 
-		pathPrefix = 'templatePics/'
+		pathPrefix = path + '/src/elevatorTemplatePics/'
 
 		buttonIndex = 0
 
@@ -76,11 +90,21 @@ class buttonTemplateMatching:
 		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
 		w,h = img.shape[:2]
-		rows,cols = img.shape
-		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
-		img = cv2.warpAffine(img,M,(cols,rows))
+		
 
-		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
+		if h > w:
+			rows,cols = img.shape
+			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+			img = cv2.warpAffine(img,M,(cols,rows))
+
+
+		if w > 700 or h > 700:
+			xmag = 640.0/w
+			ymag = 480.0/h
+
+			mag = max(xmag, ymag)
+
+			img = cv2.resize(self.img, (0, 0), fx=mag, fy=mag)
 
 		return img
 
@@ -108,11 +132,18 @@ class buttonTemplateMatching:
 		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
 		w,h = img.shape[:2]
-		rows,cols = img.shape
-		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
-		img = cv2.warpAffine(img,M,(cols,rows))
 
-		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
+		if h > w:
+			rows,cols = img.shape
+			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+			img = cv2.warpAffine(img,M,(cols,rows))
+
+		if w > 700 or h > 700:
+			xmag = 640.0/w
+			ymag = 480.0/h
+
+			mag = max(xmag, ymag)
+			img = cv2.resize(img, (0, 0), fx=mag, fy=mag)
 
 		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
 
@@ -129,6 +160,8 @@ class buttonTemplateMatching:
 		if circles is None:
 			print "No circles detected, returning None"
 			return None
+		else:
+			print len(circles[0,:]), " circles detected"
 
 		for i in circles[0,:]:
 
@@ -218,81 +251,137 @@ class buttonTemplateMatching:
 
 		return top3
 
-def newTemplateMatching(ntm, img)
-	try: 
-		scaled = ntm.adjustPicture(img)
-		colorImg = cv2.cvtColor(scaled,cv2.COLOR_GRAY2BGR)
+	def templateMatching(self, img):
+		try: 
+			scaled = self.adjustPicture(img)
+			print "here"
+			colorImg = cv2.cvtColor(scaled,cv2.COLOR_GRAY2BGR)
 
 
-		# allButtons = ntm.findAllNumberedButtons(img, True)
-		allButtons = ntm.findAllNumberedButtons(img)
+			# allButtons = self.findAllNumberedButtons(img, True)
+			allButtons = self.findAllNumberedButtons(img)
 
-		if allButtons is None:
-			print "No buttons detected!"
-			return 
+			if allButtons is None:
+				print "No buttons detected in templateMatching!"
+				return None
 
-		for i in allButtons:
-			circleInfo = i[0]
-			buttonNumber = i[1]
+			msg = elevatorButtonArray()
+			msg = []
 
-			center = circleInfo[0]
-			radius = circleInfo[1]
+			for i in allButtons:
 
-			# draw outer circle
-			cv2.circle(colorImg, center, radius, (0,255,0), 2)
-			# draw the center of the circle
-			cv2.circle(colorImg, center, 2, (0,0,255), 3)
+				circleInfo = i[0]
+				buttonNumber = i[1]
 
-			font = cv2.FONT_HERSHEY_SIMPLEX
-			cv2.putText(colorImg, str(buttonNumber), (int(center[0] - 0.25*radius), int(center[1] + 0.25*radius)), font, 1, (255, 0, 0), thickness = 2)
+				center = circleInfo[0]
+				radius = circleInfo[1]
 
-		cv2.imshow("img", colorImg)
-		if cv2.waitKey(0) == 1048689: # q was pressed
-			return allButtons
-			
-	except:
-		pass
+				buttonData = button()
+				buttonData.buttonNumber = buttonNumber
+				buttonData.x = center[0]
+				buttonData.y = center[1]
+				buttonData.z = center[2]
+				buttonData.radius = radius
 
-		
+				msg.append(buttonData)
+
+				# draw outer circle
+				cv2.circle(colorImg, center, radius, (0,255,0), 2)
+				# draw the center of the circle
+				cv2.circle(colorImg, center, 2, (0,0,255), 3)
+
+				font = cv2.FONT_HERSHEY_SIMPLEX
+				cv2.putText(colorImg, str(buttonNumber), (int(center[0] - 0.25*radius), int(center[1] + 0.25*radius)), font, 1, (255, 0, 0), thickness = 2)
+
+			cv2.imshow("img", colorImg)
+			if cv2.waitKey(0) == 1048689: # q was pressed
+				return msg
+				
+		except:
+			pass
+
+
+
+
 class elevatorButtonDetector:
-
 	def __init__(self):
 		print "HERE I AMMMMM"
-		self.button_exist_pub = rospy.Publisher("button_pub", String, queue_size=10)
+
+		rospy.init_node('elevatorButtonDetector', anonymous=True)
+
+
+		self.buttonPub = rospy.Publisher("/detectedButtons", elevatorButtonArray, queue_size=10)
+
+
+		# get an instance of RosPack with the default search paths
+		rospack = rospkg.RosPack()
+
+		# get the file path for rospy_tutorials
+		self.packPath = rospack.get_path('fetchros')
+
+		print self.packPath
 
 		self.bridge = CvBridge()
-		self.image_sub = rospy.Subscriber("/head_camera/rgb/image_raw",Image,self.callback)
+
+		# self.image_sub = rospy.Subscriber("/head_camera/rgb/image_raw", Image, self.callback)
+		
+		#fake one for now
+		self.image_sub = rospy.Subscriber("/elevatorImage", Image, self.imgCallback)
 
 		self.window = 'Camera'
-	
 
-	def callback(self,data): 
+		self.btm = buttonTemplateMatching(self.packPath)
+
+		self.noButtonMsg = elevatorButtonArray()
+		button1 = button()
+		button1.buttonNumber = -1
+
+		self.noButtonMsg = [button1]
+
+		self.floorButtons = self.noButtonMsg
+
+		# set up control timer at 100 Hz
+		rospy.Timer(CONTROL_PERIOD, self.control_callback)
+
+	def imgCallback(self,data): 
+
 		try:
 			img = self.bridge.imgmsg_to_cv2(data, "bgr8")
 		except CvBridgeError as e:
 			print(e)
 
+		# print "got image"
 		cv2.imshow(self.window, img)
 		cv2.waitKey(3)
 
-		ntm = buttonTemplateMatching()
-		floorButtons = newTemplateMatching(ntm, img)
+		self.floorButtons = self.btm.templateMatching(img)
+		if self.floorButtons is None:
+			self.floorButtons = self.noButtonMsg
 
-		if floorButtons: 
-			self.button_exist_pub.publish(floorButtons)
-			print "Published. ", floorButtons.len, " elevator buttons detected."
+	
+	def control_callback(self, timer_event=None):
+
+		if self.floorButtons: 
+			self.buttonPub.publish(self.floorButtons)
+			if self.floorButtons[0].buttonNumber == -1:
+				print "No buttons detected"
+			else:
+				print "Published. ", len(self.floorButtons), " elevator buttons detected."
 		else:
-			print "no elevator buttons detected"
-			
+			print "Error: floorButtons is None"
+
+	def run(self):
+		rospy.spin()
+
 
 def main(args):
-	tag = elevatorButtonDetector()
-	rospy.init_node('elevatorButtonDetector', anonymous=True)
-	try:
-		rospy.spin()
-	except KeyboardInterrupt:
-		print("Shutting down")
-	cv2.destroyAllWindows()
+	try: 
+		ebd = elevatorButtonDetector()
+		ebd.run()
+
+	except rospy.ROSInterruptException:
+		pass	
+
 
 if __name__ == '__main__':
 	main(sys.argv) 

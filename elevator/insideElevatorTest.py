@@ -878,6 +878,7 @@ class buttonTemplateMatching:
 
 		print "finished loading templates"
 
+
 		# debug
 		# for i in self.button1:
 		# 	cv2.imshow("1", i)
