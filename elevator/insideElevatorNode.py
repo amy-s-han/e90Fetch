@@ -104,8 +104,6 @@ class buttonTemplateMatching:
 
 		h, w = img.shape[:2]
 
-				
-
 		if h > w:
 			rows,cols = img.shape
 			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
@@ -122,8 +120,8 @@ class buttonTemplateMatching:
 
 		return img
 
-	def checkCirclesDetected(self, grayImg, circles):
-		colorImg = cv2.cvtColor(grayImg,cv2.COLOR_GRAY2BGR)
+	def checkCirclesDetected(self, circles):
+		colorImg = cv2.cvtColor(self.adjusted, cv2.COLOR_GRAY2BGR)
 
 		if circles is not None:
 			circles = np.uint16(np.around(circles))
@@ -142,17 +140,18 @@ class buttonTemplateMatching:
 
 		return decision
 
-	def findAllNumberedButtons(self, img, debug=False):
 
-		# img = cv2.medianBlur(img,5)
+	def findAllNumberedButtons(self, debug=False):
 
-		h, w = img.shape[:2]
+		# self.adjusted = cv2.medianBlur(self.adjusted, 5)
+
+		h, w = self.adjusted.shape[:2]
 		
-		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
-		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=50, param2=35, maxRadius=20) 
+		# circles = cv2.HoughCircles(self.adjusted, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+		circles = cv2.HoughCircles(self.adjusted, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=50, param2=35, maxRadius=20) 
 
 
-		if self.checkCirclesDetected(img, circles) == 1048689: # q was pressed, exit
+		if self.checkCirclesDetected(circles) == 1048689: # q was pressed, exit
 			print "\nExiting.\n"
 			return
 
@@ -265,13 +264,80 @@ class buttonTemplateMatching:
 
 		return top3
 
-	def templateMatching(self, img, pc2Data):
+
+	# searches p, then b, then a. Start search at top
+	# left corner, then go around p in a clockwise fashion
+	# If we get a non-nan at any point, return that point
+
+	#					a a a a a
+	#					a b b b a
+	#					a b p b a
+	#					a b b b a
+	#					a a a a a
+
+	def radialSearch(self, cx, cy, radius):
+
+		point = self.pointCloud[cx, cy]
+
+		# max is the smallest odd number whose squared value
+		#  is equal or larger than the diameter
+		maxR = np.floor(np.sqrt(2*radius))
+		if maxR%2 == 0:
+			maxR += 1
+
+		for h in range(0, maxR):
+
+			# h = 0, i = 1
+			# h = 1, i = 3
+			# h = 2, i = 5
+			i = 2*h + 1
+
+			x = cx - h
+			y = cy - h
+
+			#first check top row around point
+			for j in range(i + 2):
+				p = self.pointCloud[x + j, y]
+				if p is not nan:
+					return p
+
+			x += i + 1
+
+			# now check right vertical around point
+			for k in range(1, i + 2):
+				p = self.pointCloud[x, y + k]
+				if p is not nan:
+					return p
+
+			y += i + 1				
+
+			# now check bottom row around point
+			for l in range(1, i + 2):
+				p = self.pointCloud[x - l, y]
+				if p is not nan:
+					return p
+
+			x = cx - h
+
+			# now check left vertical around point
+			for m in range(1, i + 1):
+				p = self.pointCloud[x, y - k]
+				if p is not nan:
+					return p
+		
+		print "no point found"
+		return None		
+
+
+
+	def templateMatching(self, img, pointCloud=None):
+
 		try: 
-			adjusted = self.adjustPicture(img)
-			colorImg = cv2.cvtColor(adjusted,cv2.COLOR_GRAY2BGR)
+			self.adjusted = self.adjustPicture(img)
+			colorImg = cv2.cvtColor(self.adjusted, cv2.COLOR_GRAY2BGR)
 			
 			# allButtons = self.findAllNumberedButtons(img, True)
-			allButtons = self.findAllNumberedButtons(adjusted)
+			allButtons = self.findAllNumberedButtons()
 
 			if allButtons is None:
 				print "No buttons detected in templateMatching!"
@@ -295,20 +361,35 @@ class buttonTemplateMatching:
 
 				print center, radius
 
+				cx = center[0]
+				cy = center[1]
+
 
 				buttonData.buttonNumber = buttonNumber
-				buttonData.x = center[0]
-				buttonData.y = center[1]
+				buttonData.x = cx
+				buttonData.y = cy
 
 
 				buttonData.radius = radius
 
 				# get the xyz point data from the registered point cloud
-				# if pc2Data:
-				# 	print "Got pc2Data~ need to do this though"
-				# 	buttonData.x3d = self.pc2Data[center[1] * 6]
-				# 	buttonData.y3d = 
-				# 	buttonData.z3d = 
+				if pointCloud:
+					print "Got pc2Data~ need to do this though"
+
+					point = pointCloud[cx, cy]
+					
+					if point is nan:
+						self.pointCloud = pointCloud
+						point3d = self.radialSearch(cx, cy, radius)
+						if point3d:
+							buttonData.x3d = point3d[0]
+							buttonData.y3d = point3d[1]
+							buttonData.z3d = point3d[2]
+
+					else:
+						buttonData.x3d = point[0]
+						buttonData.y3d = point[1]
+						buttonData.z3d = point[2]
 
 
 				print "buttonData" , i, ": ", buttonData
@@ -364,16 +445,11 @@ class elevatorButtonDetector:
 
 		self.floorButtons = self.noButtonMsg
 
-		self.pc2Width = None
-		self.pc2Height = None
-		self.pc2Data = None
-
-		
 		# self.image_sub = rospy.Subscriber("/head_camera/rgb/image_raw", Image, self.imgCallback)
-		# self.image_sub = rospy.Subscriber("/head_camera/depth_registered/points", PointCloud2.msg, self.pc2callback)
+		self.image_sub = rospy.Subscriber("/head_camera/depth_registered/points", PointCloud2.msg, self.pc2callback)
 			
 		#fake one for now
-		self.image_sub = rospy.Subscriber("/elevatorImage", Image, self.imgCallback)
+		# self.image_sub = rospy.Subscriber("/elevatorImage", Image, self.imgCallback)
 
 
 		# set up control timer at 100 Hz
@@ -381,7 +457,6 @@ class elevatorButtonDetector:
 
 	def imgCallback(self, data): 
 		
-
 		try:
 			img = self.bridge.imgmsg_to_cv2(data, "bgr8")
 		except CvBridgeError as e:
@@ -393,18 +468,56 @@ class elevatorButtonDetector:
 		cv2.imshow(self.window, img)
 		cv2.waitKey(3)
 
-		self.floorButtons = self.btm.templateMatching(img, self.pc2Data)
+		self.floorButtons = self.btm.templateMatching(img)
 		print self.floorButtons
 
 		if self.floorButtons is None:
 			self.floorButtons = self.noButtonMsg
 
-		
 
-	def pc2callback(self, width, height, data):
-		self.pc2Width = width
-		self.pc2Height = height
-		self.pc2Data = data
+
+	def pc2callback(self, data):
+		
+		gen = pc2.read_points(data, skip_nans=False)
+
+		int_data = list(gen)
+
+		pointCloud = np.zeros((h, w))
+		img = np.zeros((h, w, 3))
+
+		i, j = 0
+		
+		for x in int_data:
+			test = x[3]
+			s = struct.pack('>f', test)
+			i = struct.unpack('>l', s)[0]
+
+			pack = ctypes.c_uint32(i).value
+			r = (pack & 0x00FF0000) >> 16
+			g = (pack & 0x0000FF00) >> 8
+			b = (pack & 0x000000FF) 
+
+			img[i, j, 0] = b
+			img[i, j, 1] = g
+			img[i, j, 2] = r
+
+			pointCloud[i, j] = [x[0], x[1], x[2]]
+
+			if j == w:
+				j = 0
+				i += 1
+
+		imPath = self.packPath + "/src/imgFromPc2.jpg"
+		cv2.imwrite(imPath, img)
+		
+		img2 = cv2.imread(imPath)
+
+		self.floorButtons = self.btm.templateMatching(img2, pointCloud)
+		print self.floorButtons
+
+		if self.floorButtons is None:
+			self.floorButtons = self.noButtonMsg
+
 
 	
 	def control_callback(self, timer_event=None):
