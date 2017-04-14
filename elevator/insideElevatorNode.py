@@ -41,8 +41,9 @@ class buttonTemplateMatching:
 
 
 		self.detectedButtonNumbers = []
+		self.path = path
 
-		pathPrefix = path + '/src/elevatorTemplatePics/'
+		pathPrefix = path + '/elevator/elevatorTemplatePics/'
 
 		buttonIndex = 0
 
@@ -79,7 +80,7 @@ class buttonTemplateMatching:
 				break
 
 		self.buttonArray = [self.button1, self.button2, self.button3]
-		print "finished loading templates"
+		print "finished loading", len(self.button1) + len(self.button2) + len(self.button3), " templates"
 
 		# debug
 		# for i in self.button1:
@@ -101,15 +102,16 @@ class buttonTemplateMatching:
 	def adjustPicture(self, img):
 		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-		w,h = img.shape[:2]
-		
+		h, w = img.shape[:2]
+
+				
 
 		if h > w:
 			rows,cols = img.shape
 			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
 			img = cv2.warpAffine(img,M,(cols,rows))
 
-
+		
 		if w > 1000 or h > 1000:
 			xmag = 640.0/w
 			ymag = 480.0/h
@@ -132,6 +134,8 @@ class buttonTemplateMatching:
 				# draw the center of the circle
 				cv2.circle(colorImg,(i[0],i[1]),2,(0,0,255),3)
 
+		cv2.imwrite(self.path + "/src/testPicDetectedCircles2.jpg", colorImg)
+
 		cv2.imshow('Detected Circles, press q to quit',colorImg)
 		decision = cv2.waitKey(0)
 		cv2.destroyAllWindows()
@@ -140,24 +144,13 @@ class buttonTemplateMatching:
 
 	def findAllNumberedButtons(self, img, debug=False):
 
-		img = cv2.medianBlur(img,5)
-		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+		# img = cv2.medianBlur(img,5)
 
-		w,h = img.shape[:2]
+		h, w = img.shape[:2]
+		
+		# circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=50, param2=35, maxRadius=20) 
 
-		if h > w:
-			rows,cols = img.shape
-			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
-			img = cv2.warpAffine(img,M,(cols,rows))
-
-		if w > 1000 or h > 1000:
-			xmag = 640.0/w
-			ymag = 480.0/h
-
-			mag = max(xmag, ymag)
-			img = cv2.resize(img, (0, 0), fx=mag, fy=mag)
-
-		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
 
 		if self.checkCirclesDetected(img, circles) == 1048689: # q was pressed, exit
 			print "\nExiting.\n"
@@ -221,13 +214,13 @@ class buttonTemplateMatching:
 					# cv2.imshow('template',template)
 					# if cv2.waitKey(0) == 1048689: # q was pressed
 					# 	return
-
 					if res[0][0] > highestRes:
 						highestRes = res[0][0]
 				
 				if highestRes > bestMatchingRes: #this button number is a better match
 					bestMatchingRes = highestRes
 					bestMatchingButton = j+1 # this corresponds to the button's number
+
 
 			if debug:
 				print "this image looks like button ", bestMatchingButton, "with res: ", bestMatchingRes
@@ -255,9 +248,7 @@ class buttonTemplateMatching:
 		detectedButtonNumbers = []
 
 		for i in range(len(templateMatchResult)):
-			print i, len(top3)
-
-			if i > len(templateMatchResult) or len(top3) == 3:
+			if i > len(templateMatchResult) - 1 or len(top3) == 3:
 				break
 
 			buttonNumber = templateMatchResult[i][1]
@@ -269,8 +260,6 @@ class buttonTemplateMatching:
 
 			circleInfo = templateMatchResult[i][3]
 
-			print "res: ", templateMatchResult[i][0], "button number: ", buttonNumber
-
 			top3.append([circleInfo, buttonNumber])
 			detectedButtonNumbers.append(buttonNumber)
 
@@ -278,11 +267,11 @@ class buttonTemplateMatching:
 
 	def templateMatching(self, img, pc2Data):
 		try: 
-			scaled = self.adjustPicture(img)
-			colorImg = cv2.cvtColor(scaled,cv2.COLOR_GRAY2BGR)
-
+			adjusted = self.adjustPicture(img)
+			colorImg = cv2.cvtColor(adjusted,cv2.COLOR_GRAY2BGR)
+			
 			# allButtons = self.findAllNumberedButtons(img, True)
-			allButtons = self.findAllNumberedButtons(img)
+			allButtons = self.findAllNumberedButtons(adjusted)
 
 			if allButtons is None:
 				print "No buttons detected in templateMatching!"
@@ -336,6 +325,8 @@ class buttonTemplateMatching:
 
 			print "msg", msg
 
+			cv2.imwrite(self.path + "/src/testPicDetectedButtons2.jpg", colorImg)
+
 			cv2.imshow("press k to accept msg", colorImg)
 
 			if cv2.waitKey(0) == 1048683: # k was pressed
@@ -377,7 +368,7 @@ class elevatorButtonDetector:
 		self.pc2Height = None
 		self.pc2Data = None
 
-
+		
 		# self.image_sub = rospy.Subscriber("/head_camera/rgb/image_raw", Image, self.imgCallback)
 		# self.image_sub = rospy.Subscriber("/head_camera/depth_registered/points", PointCloud2.msg, self.pc2callback)
 			
@@ -396,7 +387,9 @@ class elevatorButtonDetector:
 		except CvBridgeError as e:
 			print(e)
 
-		# print "got image"
+		cv2.imwrite(self.packPath + "/src/testPic2.jpg", img)
+
+		# print "got image", img.shape[:2]
 		cv2.imshow(self.window, img)
 		cv2.waitKey(3)
 
@@ -406,6 +399,7 @@ class elevatorButtonDetector:
 		if self.floorButtons is None:
 			self.floorButtons = self.noButtonMsg
 
+		
 
 	def pc2callback(self, width, height, data):
 		self.pc2Width = width
@@ -432,6 +426,8 @@ class elevatorButtonDetector:
 
 def main(args):
 	try: 
+
+
 		ebd = elevatorButtonDetector()
 		ebd.run()
 

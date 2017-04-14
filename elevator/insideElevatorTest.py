@@ -895,12 +895,19 @@ class buttonTemplateMatching:
 	def adjustPicture(self, img):
 		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-		w,h = img.shape[:2]
-		rows,cols = img.shape
-		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
-		img = cv2.warpAffine(img,M,(cols,rows))
+		h, w = img.shape[:2]
 
-		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
+		if h > w:
+			rows,cols = img.shape
+			M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
+			img = cv2.warpAffine(img,M,(cols,rows))
+
+		if w > 1000 or h > 1000:
+			xmag = 640.0/w
+			ymag = 480.0/h
+
+			mag = max(xmag, ymag)
+			img = cv2.resize(img, (0, 0), fx=mag, fy=mag)
 
 		return img
 
@@ -924,17 +931,11 @@ class buttonTemplateMatching:
 
 	def findAllNumberedButtons(self, img, debug=False):
 
-		img = cv2.medianBlur(img,5)
-		img = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+		# img = cv2.medianBlur(img,5)
 
-		w,h = img.shape[:2]
-		rows,cols = img.shape
-		M = cv2.getRotationMatrix2D((cols/2,rows/2),-90,1)
-		img = cv2.warpAffine(img,M,(cols,rows))
+		h, w = img.shape[:2]
 
-		img = cv2.resize(img, (0, 0), fx=0.3, fy=0.3)
-
-		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=90, param2=60, maxRadius=100) 
+		circles = cv2.HoughCircles(img, cv.CV_HOUGH_GRADIENT, 1.2, 20, param1=50, param2=35, maxRadius=20) 
 
 		if self.checkCirclesDetected(img, circles) == 1048689: # q was pressed, exit
 			print "\nExiting.\n"
@@ -1045,7 +1046,7 @@ def newTemplateMatching(args):
 
 	if len(args) == 1:
 		# Load static image for testing
-		img = cv2.imread('pics/inside1.jpg')
+		img = cv2.imread('pics/test.jpg')
 	else:
 		# check image exists and load
 		if os.path.isfile(args[1]):
@@ -1058,12 +1059,12 @@ def newTemplateMatching(args):
 	ntm = buttonTemplateMatching()
 	
 
-	scaled = ntm.adjustPicture(img)
-	colorImg = cv2.cvtColor(scaled,cv2.COLOR_GRAY2BGR)
+	adjusted = ntm.adjustPicture(img)
+	colorImg = cv2.cvtColor(adjusted,cv2.COLOR_GRAY2BGR)
 
 
-	# allButtons = ntm.findAllNumberedButtons(img, True)
-	allButtons = ntm.findAllNumberedButtons(img)
+	# allButtons = ntm.findAllNumberedButtons(adjusted, True)
+	allButtons = ntm.findAllNumberedButtons(adjusted)
 
 	if allButtons is None:
 		print "No buttons detected!"

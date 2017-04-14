@@ -40,7 +40,7 @@ class testNode:
 
 		print packPath
 
-		self.img = cv2.imread(packPath + '/src/elevatorPics/inside1.jpg')
+		self.img = cv2.imread(packPath + '/elevator/elevatorPics/inside1.jpg')
 
 		if self.img is None:
 			print "uhhhh image did not load"
