@@ -37,10 +37,11 @@ public:
 	void clearOctree();
 	void printPoints();
 	void printOctree();
-	void traverseAndCheck(TransformedConvex* obj);
+	void traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin);
 	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList);
-	bool buildOctree(std::vector<ccdw::vec3> incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
-	Bounds boundingBox(std::vector<ccdw::vec3> points);
+	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList, ccd_real_t dmin);
+	bool buildOctree(const std::vector<ccdw::vec3>& incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
+	Bounds boundingBox(const std::vector<ccdw::vec3>& points);
 
 
 	Octree* child[8];
@@ -49,7 +50,7 @@ public:
 	ccd_real_t radius;
 	int height;
 	bool isLeaf;
-	std::vector<ccdw::vec3> collidingPointsFromCheck;;
+	std::vector<ccdw::vec3> collidingPointsFromCheck;
 	Checker checker;
 	QueryType qtype;
 

@@ -43,7 +43,7 @@ void Octree::printOctree(){
 	}
 }
 
-void Octree::traverseAndCheck(TransformedConvex* obj){
+void Octree::traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin){
 	collidingPointsFromCheck.clear();
 
 
@@ -59,8 +59,8 @@ void Octree::traverseAndCheck(TransformedConvex* obj){
 	// std::cout << "Height: " << height << ", Object center: " << objCenter << " and bounding box center: " << boxCenter << std::endl;
 
 	// first check if the object hits the bounding box of this octree
-	if(checker.query(qtype, &report, box, obj, 0)){
-		// the object hits the bounding box of this octree
+	if(checker.query(qtype, &report, box, obj, dmin)){
+		// the object hits the dialated bounding box of this octree
 
 		// if you are a leaf, check if the obj hits any of the points
 		if(isLeaf){
@@ -83,7 +83,7 @@ void Octree::traverseAndCheck(TransformedConvex* obj){
 			for(int i=0; i<8; i++){
 				// check if the child is defined
 				if(child[i] != NULL){
-					child[i]->traverseAndCheck(obj);
+					child[i]->traverseAndCheck(obj, dmin);
 
 					// if the child has any colliding points, copy it up
 					for(size_t j=0; j<child[i]->collidingPointsFromCheck.size(); j++){
@@ -103,9 +103,10 @@ void Octree::traverseAndCheck(TransformedConvex* obj){
 
 }
 
+// dmin = 0 here. No dialation around point cloud. 
 bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList){
 
-	traverseAndCheck(obj);
+	traverseAndCheck(obj, 0);
 
 	CollidingObjects spccReport;
 
@@ -126,7 +127,31 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 
 }
 
-bool Octree::buildOctree(const std::vector<ccdw::vec3> incomingPoints,
+// set dmin when calling checkForCollisions
+bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList, ccd_real_t dmin){
+
+	traverseAndCheck(obj, dmin);
+
+	CollidingObjects spccReport;
+
+	if(collidingPointsFromCheck.size() > 0){
+		CollidingObjects spccReport;
+		spccReport.objectIndex = objIndex;
+		spccReport.collidingPoints = collidingPointsFromCheck;
+		
+		spccReportMasterList.push_back(spccReport);
+
+		return true;
+	}
+
+	// push back an empty report so that the report indicies match up with cgeom/object array indices
+	spccReportMasterList.push_back(spccReport);
+
+	return false;
+
+}
+
+bool Octree::buildOctree(const std::vector<ccdw::vec3>& incomingPoints,
 													 int threshold,
 													 int maxDepth,
 													 Bounds &b,
@@ -249,17 +274,17 @@ bool Octree::buildOctree(const std::vector<ccdw::vec3> incomingPoints,
 }
 
 
-Bounds Octree::boundingBox(std::vector<ccdw::vec3> points){
+Bounds Octree::boundingBox(const std::vector<ccdw::vec3>& points){
 
 	Bounds b;
 
 	// Find bounding box
-	ccd_real_t xlo= 0; 
-	ccd_real_t ylo = 0;
-	ccd_real_t xhigh = 0;
-	ccd_real_t yhigh = 0; 
-	ccd_real_t zlo = 0;
-	ccd_real_t zhigh = 0; 
+	ccd_real_t xlo= 10000; 
+	ccd_real_t ylo = 10000;
+	ccd_real_t zlo = 10000;
+	ccd_real_t xhigh = -10000;
+	ccd_real_t yhigh = -10000; 
+	ccd_real_t zhigh = -10000; 
 
 	ccd_real_t x, y, z;
 
@@ -295,12 +320,14 @@ Bounds Octree::boundingBox(std::vector<ccdw::vec3> points){
 	// The radius (dimensions in each direction)
 	ccdw::vec3 radius = max - min; // length of the edge of square
 
+	std::cout << "r: " << radius[0] << " " << radius[1] << " " << radius[2] << std::endl;
+
 	b.center = min + radius * 0.5;
 
 	b.radius = radius[0]; // first set to x
 	if (b.radius < radius[1]) b.radius = radius[1];
 	if (b.radius < radius[2]) b.radius = radius[2];
 
-	b.radius = b.radius * 1.05; // fudge factor
+	b.radius = b.radius; // fudge factor
 	return b;
 }
