@@ -43,7 +43,7 @@ void Octree::printOctree(){
 	}
 }
 
-void Octree::traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin){
+void Octree::traverseAndCheck(TransformedConvex* obj){
 	collidingPointsFromCheck.clear();
 
 
@@ -52,14 +52,14 @@ void Octree::traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin){
 	TransformedConvex* box = transform(new Box(ccdw::vec3(radius)), Transform3(center));
 	Report report;
 
-	ccdw::vec3 objCenter, boxCenter;
-	obj->center(objCenter);
-	box->center(boxCenter);
+	// ccdw::vec3 objCenter, boxCenter;
+	// obj->center(objCenter);
+	// box->center(boxCenter);
 
-	// std::cout << "Height: " << height << ", Object center: " << objCenter << " and bounding box center: " << boxCenter << std::endl;
+
 
 	// first check if the object hits the bounding box of this octree
-	if(checker.query(qtype, &report, box, obj, dmin)){
+	if(checker.query(qtype, &report, box, obj, 0)){
 		// the object hits the dialated bounding box of this octree
 
 		// if you are a leaf, check if the obj hits any of the points
@@ -83,7 +83,7 @@ void Octree::traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin){
 			for(int i=0; i<8; i++){
 				// check if the child is defined
 				if(child[i] != NULL){
-					child[i]->traverseAndCheck(obj, dmin);
+					child[i]->traverseAndCheck(obj);
 
 					// if the child has any colliding points, copy it up
 					for(size_t j=0; j<child[i]->collidingPointsFromCheck.size(); j++){
@@ -106,7 +106,7 @@ void Octree::traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin){
 // dmin = 0 here. No dialation around point cloud. 
 bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList){
 
-	traverseAndCheck(obj, 0);
+	traverseAndCheck(obj);
 
 	CollidingObjects spccReport;
 
@@ -130,7 +130,14 @@ bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::ve
 // set dmin when calling checkForCollisions
 bool Octree::checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList, ccd_real_t dmin){
 
-	traverseAndCheck(obj, dmin);
+	Convex* dilatedObj = 0;
+
+	if(dmin){
+		dilatedObj = dilate(obj, dmin);
+		obj = (TransformedConvex*) dilatedObj;
+	}
+
+	traverseAndCheck(obj);
 
 	CollidingObjects spccReport;
 

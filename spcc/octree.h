@@ -37,7 +37,7 @@ public:
 	void clearOctree();
 	void printPoints();
 	void printOctree();
-	void traverseAndCheck(TransformedConvex* obj, ccd_real_t dmin);
+	void traverseAndCheck(TransformedConvex* obj);
 	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList);
 	bool checkForCollisions(TransformedConvex* obj, size_t objIndex, std::vector<CollidingObjects> &spccReportMasterList, ccd_real_t dmin);
 	bool buildOctree(const std::vector<ccdw::vec3>& incomingPoints, int threshold, int maxDepth, Bounds &b, int currDepth);
